@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scan This Scam</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header>
+    <div class="left-section">
+      <img src="logo-placeholder.png" alt="Logo" class="logo" />
+      <strong>Is This A Scam?</strong>
+    </div>
+    <nav>
+      <a href="#" onclick="updateBox('message')">Copy and Paste a Message</a>
+      <a href="#" onclick="updateBox('email')">Forward an Email</a>
+      <a href="#" onclick="updateBox('screenshot')">Upload a Screenshot</a>
+      <a href="#" onclick="updateBox('audio')">Upload a Voicemail or Audio File</a>
+    </nav>
+    <div class="button-group">
+      <button class="cta-button">My Cart</button>
+      <button class="cta-button">Login</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <h1>Smart Detection. Clear Guidance. Safer Decisions.</h1>
+  </section>
+
+  <section class="grid">
+    <div class="card" onclick="updateBox('message')">
+      <div class="card-icon"><i class="fas fa-comment-dots"></i></div>
+      <div class="card-title">Paste a Message</div>
+      <div class="card-description">Placeholder content describing this option.</div>
+      <a href="#">Learn more →</a>
+    </div>
+    <div class="card" onclick="updateBox('email')">
+      <div class="card-icon"><i class="fas fa-envelope-open-text"></i></div>
+      <div class="card-title">Forward an Email</div>
+      <div class="card-description">Placeholder content describing this option.</div>
+      <a href="#">Learn more →</a>
+    </div>
+    <div class="card" onclick="updateBox('screenshot')">
+      <div class="card-icon"><i class="fas fa-image"></i></div>
+      <div class="card-title">Upload a Screenshot</div>
+      <div class="card-description">Placeholder content describing this option.</div>
+      <a href="#">Learn more →</a>
+    </div>
+    <div class="card" onclick="updateBox('audio')">
+      <div class="card-icon"><i class="fas fa-microphone-alt"></i></div>
+      <div class="card-title">Upload an Audio File</div>
+      <div class="card-description">Placeholder content describing this option.</div>
+      <a href="#">Learn more →</a>
+    </div>
+  </section>
+
+  <section class="dynamic-section">
+    <div class="dropdown-wrapper">
+      <div id="inputBox">
+        <div class="input-container" id="inputContainer">
+          <textarea 
+            id="mainInput" 
+            placeholder="Paste text, images, or drag files here..."
+            class="main-input"
+          ></textarea>
+          <div class="input-overlay" id="inputOverlay">
+            <div class="overlay-content">
+              <i class="fas fa-cloud-upload-alt overlay-icon"></i>
+              <p>Drop files here or paste content</p>
+            </div>
+          </div>
+          <input type="file" id="fileInput" accept="image/*,audio/*,.txt,.pdf,.doc,.docx" style="display: none;">
+        </div>
+        <div class="file-preview" id="filePreview" style="display: none;">
+          <div class="preview-item">
+            <span id="fileName"></span>
+            <button class="remove-btn" onclick="removeFile()">×</button>
+          </div>
+        </div>
+        <button class="analyze-btn" id="analyzeBtn" onclick="analyzeContent()" disabled>
+          <i class="fas fa-shield-alt"></i>
+          Analyze for Scams
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="results-section" id="resultsSection" style="display: none;">
+    <div class="results-container">
+      <div class="risk-score">
+        <div class="score-circle">
+          <span id="riskScore">0</span>
+        </div>
+        <h3>Risk Score</h3>
+      </div>
+      <div class="analysis-content">
+        <div class="analysis-section">
+          <h3><i class="fas fa-exclamation-triangle"></i> Red Flags</h3>
+          <ul id="redFlags"></ul>
+        </div>
+        <div class="analysis-section">
+          <h3><i class="fas fa-bug"></i> Potential Threats</h3>
+          <ul id="threats"></ul>
+        </div>
+        <div class="analysis-section">
+          <h3><i class="fas fa-lightbulb"></i> Recommendations</h3>
+          <ul id="recommendations"></ul>
+        </div>
+        <div class="analysis-section">
+          <h3><i class="fas fa-shield-alt"></i> Safety Tips</h3>
+          <ul id="safetyTips"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Scam Checking Service provided by Placeholder Inc.
+  </footer>
+
+  <script>
+    let currentFile = null;
+    let currentText = '';
+    let currentPastedImage = null;
+
+    // Main input elements
+    const mainInput = document.getElementById('mainInput');
+    const inputContainer = document.getElementById('inputContainer');
+    const inputOverlay = document.getElementById('inputOverlay');
+    const fileInput = document.getElementById('fileInput');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+
+    // Drag and drop over text field
+    inputContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      inputOverlay.style.display = 'flex';
+    });
+
+    inputContainer.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      if (!inputContainer.contains(e.relatedTarget)) {
+        inputOverlay.style.display = 'none';
+      }
+    });
+
+    inputContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      inputOverlay.style.display = 'none';
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    // Paste event handling
+    mainInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      
+      const items = e.clipboardData.items;
+      let hasContent = false;
+
+      for (let item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          // Handle pasted image
+          const file = item.getAsFile();
+          handleFile(file);
+          hasContent = true;
+        } else if (item.type === 'text/plain') {
+          // Handle pasted text
+          item.getAsString((text) => {
+            mainInput.value += text;
+            currentText = mainInput.value;
+            updateAnalyzeButton();
+          });
+          hasContent = true;
+        }
+      }
+
+      if (!hasContent) {
+        // Fallback: try to get text from clipboard
+        navigator.clipboard.readText().then(text => {
+          if (text) {
+            mainInput.value += text;
+            currentText = mainInput.value;
+            updateAnalyzeButton();
+          }
+        }).catch(() => {
+          // If clipboard API fails, allow default paste behavior
+          e.stopPropagation();
+        });
+      }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    // Text input change
+    mainInput.addEventListener('input', (e) => {
+      currentText = e.target.value;
+      updateAnalyzeButton();
+    });
+
+    function handleFile(file) {
+      currentFile = file;
+      showFilePreview(file.name);
+      updateAnalyzeButton();
+    }
+
+    function showFilePreview(fileName) {
+      // Create or update file preview
+      let filePreview = document.getElementById('filePreview');
+      if (!filePreview) {
+        filePreview = document.createElement('div');
+        filePreview.id = 'filePreview';
+        filePreview.className = 'file-preview';
+        filePreview.innerHTML = `
+          <div class="preview-item">
+            <span id="fileName"></span>
+            <button class="remove-btn" onclick="removeFile()">×</button>
+          </div>
+        `;
+        inputContainer.parentNode.insertBefore(filePreview, inputContainer.nextSibling);
+      }
+      
+      document.getElementById('fileName').textContent = fileName;
+      filePreview.style.display = 'block';
+    }
+
+    function removeFile() {
+      currentFile = null;
+      currentPastedImage = null;
+      const filePreview = document.getElementById('filePreview');
+      if (filePreview) {
+        filePreview.style.display = 'none';
+      }
+      updateAnalyzeButton();
+    }
+
+    function updateAnalyzeButton() {
+      const hasContent = (currentFile !== null) || (currentText.trim() !== '') || (currentPastedImage !== null);
+      analyzeBtn.disabled = !hasContent;
+    }
+
+    async function analyzeContent() {
+      const formData = new FormData();
+      
+      if (currentFile) {
+        formData.append('file', currentFile);
+      }
+      
+      if (currentText.trim()) {
+        formData.append('text', currentText);
+      }
+
+      // Show loading state
+      analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+      analyzeBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          displayResults(result);
+        } else {
+          alert('Error: ' + (result.error || 'Analysis failed'));
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error: Could not connect to server');
+      } finally {
+        // Reset button
+        analyzeBtn.innerHTML = '<i class="fas fa-shield-alt"></i> Analyze for Scams';
+        analyzeBtn.disabled = false;
+      }
+    }
+
+    function displayResults(result) {
+      // Update risk score
+      document.getElementById('riskScore').textContent = result.riskScore || 0;
+      
+      // Update risk score color
+      const scoreCircle = document.querySelector('.score-circle');
+      const score = result.riskScore || 0;
+      if (score >= 70) {
+        scoreCircle.style.backgroundColor = '#ef4444';
+      } else if (score >= 40) {
+        scoreCircle.style.backgroundColor = '#f59e0b';
+      } else {
+        scoreCircle.style.backgroundColor = '#10b981';
+      }
+
+      // Update lists
+      updateList('redFlags', result.redFlags || []);
+      updateList('threats', result.threats || []);
+      updateList('recommendations', result.recommendations || []);
+      updateList('safetyTips', result.safetyTips || []);
+
+      // Show results
+      document.getElementById('resultsSection').style.display = 'block';
+      document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateList(elementId, items) {
+      const element = document.getElementById(elementId);
+      element.innerHTML = '';
+      items.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        element.appendChild(li);
+      });
+    }
+
+    function updateBox(selection) {
+      const box = document.getElementById('inputBox');
+      if (selection === 'message' || selection === 'email') {
+        box.innerHTML = '<textarea placeholder="Paste your content here..."></textarea>';
+      } else if (selection === 'screenshot') {
+        box.innerHTML = '<input type="file" accept="image/*">';
+      } else if (selection === 'audio') {
+        box.innerHTML = '<input type="file" accept=".m4a,.mp3,.wav">';
+      }
+    }
+  </script>
+</body>
+</html>
