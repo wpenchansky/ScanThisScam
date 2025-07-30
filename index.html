@@ -9,63 +9,82 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
+  <script src="https://js.stripe.com/v3/"></script> <!-- New: Stripe.js script -->
 </head>
 <body>
   <header>
-    <div class="left-section">
+    <div class="header-left-group">
       <img src="logo-placeholder.png" alt="Logo" class="logo" />
-      <strong>Is This A Scam?</strong>
+      <strong>Scan This Scam</strong>
     </div>
-    <nav>
-      <a href="#" onclick="updateBox('message')">Copy and Paste a Message</a>
-      <a href="#" onclick="updateBox('email')">Forward an Email</a>
-      <a href="#" onclick="updateBox('screenshot')">Upload a Screenshot</a>
-      <a href="#" onclick="updateBox('audio')">Upload a Voicemail or Audio File</a>
-    </nav>
+    <h1 class="header-slogan">Smart Detection. Clear Guidance. Safer Decisions.</h1>
     <div class="button-group">
-      <button class="cta-button">My Cart</button>
-      <button class="cta-button">Login</button>
+      <button type="button" class="cta-button" id="loginBtn">Login</button>
+      <button type="button" class="cta-button" id="myScansBtn" style="display: none;">My Scans</button>
+      <button type="button" class="cta-button" id="logoutBtn" style="display: none;">Logout</button>
     </div>
   </header>
 
-  <section class="hero">
-    <h1>Smart Detection. Clear Guidance. Safer Decisions.</h1>
+  <!-- New: Authentication and User Sections -->
+  <section class="auth-section" id="authSection" style="display: none;">
+    <div class="auth-container">
+      <button type="button" class="auth-close-btn" id="authCloseBtn">&times;</button>
+      <div class="auth-form" id="loginForm">
+        <h2>Login</h2>
+        <input type="email" id="loginEmail" placeholder="Email" required>
+        <input type="password" id="loginPassword" placeholder="Password" required>
+        <button id="authLoginBtn">Login</button>
+        <p>Don't have an account? <a href="#" id="showSignup">Sign Up</a></p>
+      </div>
+      <div class="auth-form" id="signupForm" style="display: none;">
+        <h2>Sign Up</h2>
+        <input type="email" id="signupEmail" placeholder="Email" required>
+        <input type="password" id="signupPassword" placeholder="Password" required>
+        <button id="signupBtn">Sign Up</button>
+        <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="my-scans-section" id="myScansSection" style="display: none;">
+    <div class="my-scans-container">
+      <button type="button" class="my-scans-close-btn" id="scansCloseBtn">&times;</button>
+      <h2>My Past Scans</h2>
+      <div id="pastScansList" class="all-results-container">
+        <!-- Past analysis results will be loaded here -->
+      </div>
+    </div>
   </section>
 
   <section class="grid">
-    <div class="card" onclick="updateBox('message')">
+    <div class="card">
       <div class="card-icon"><i class="fas fa-comment-dots"></i></div>
-      <div class="card-title">Paste a Message</div>
-      <div class="card-description">Placeholder content describing this option.</div>
+      <div class="card-title">Message</div>
+      <div class="card-description">Copy a text, email, or any other message and paste it below.</div>
       <a href="#">Learn more →</a>
     </div>
-    <div class="card" onclick="updateBox('email')">
+    <div class="card">
       <div class="card-icon"><i class="fas fa-envelope-open-text"></i></div>
-      <div class="card-title">Forward an Email</div>
-      <div class="card-description">Placeholder content describing this option.</div>
+      <div class="card-title">Email</div>
+      <div class="card-description">Save the suspicious email to your computer and upload it below.</div>
       <a href="#">Learn more →</a>
     </div>
-    <div class="card" onclick="updateBox('screenshot')">
-      <div class="card-icon"><i class="fas fa-image"></i></div>
-      <div class="card-title">Upload a Screenshot</div>
-      <div class="card-description">Placeholder content describing this option.</div>
-      <a href="#">Learn more →</a>
-    </div>
-    <div class="card" onclick="updateBox('audio')">
+    <div class="card">
       <div class="card-icon"><i class="fas fa-microphone-alt"></i></div>
-      <div class="card-title">Upload an Audio File</div>
-      <div class="card-description">Placeholder content describing this option.</div>
+      <div class="card-title">Audio</div>
+      <div class="card-description">Upload a voicemail or any other audio file to have in analyzed below.</div>
       <a href="#">Learn more →</a>
     </div>
   </section>
 
   <section class="dynamic-section">
     <div class="dropdown-wrapper">
+      <!-- Removed: General Payment Button -->
       <div id="inputBox">
         <div class="input-container" id="inputContainer">
           <textarea 
             id="mainInput" 
-            placeholder="Paste text, images, or drag files here..."
+            placeholder="Paste text, or drag and drop your files here..."
             class="main-input"
           ></textarea>
           <div class="input-overlay" id="inputOverlay">
@@ -82,40 +101,74 @@
             <button class="remove-btn" onclick="removeFile()">×</button>
           </div>
         </div>
-        <button class="analyze-btn" id="analyzeBtn" onclick="analyzeContent()" disabled>
-          <i class="fas fa-shield-alt"></i>
-          Analyze for Scams
-        </button>
+        <div class="input-actions">
+          <button class="add-to-queue-btn" id="addToQueueBtn" onclick="addToQueue()" disabled>
+            <i class="fas fa-plus-circle"></i> Queue
+          </button>
+          <button class="analyze-btn" id="analyzeBtn" onclick="analyzeContent()" disabled>
+            <i class="fas fa-shield-alt"></i>
+            Analyze for Scams
+          </button>
+        </div>
       </div>
     </div>
   </section>
 
+  <section class="pricing-section" id="pricingSection" style="display: none;">
+    <h2>Choose Your Analysis Plan</h2>
+    <div class="pricing-grid">
+
+      <!-- Monthly Plan Card -->
+      <div class="pricing-card">
+        <h3>Monthly Access</h3>
+        <p class="price">$5<span>/month</span></p>
+        <ul>
+          <li><i class="fas fa-check-circle"></i> Unlimited Scam Analysis</li>
+          <li><i class="fas fa-check-circle"></i> Real-time Threat Detection</li>
+          <li><i class="fas fa-check-circle"></i> Actionable Safety Advice</li>
+        </ul>
+        <button class="select-plan-btn" data-plan-id="price_1Rq0bSRtn27UxH2dH6iRRm0A">Select Monthly</button>
+      </div>
+
+      <!-- Annual Plan Card -->
+      <div class="pricing-card">
+        <h3>Annual Access</h3>
+        <p class="price">$50<span>/year</span></p>
+        <ul>
+          <li><i class="fas fa-check-circle"></i> All Monthly Features</li>
+          <li><i class="fas fa-check-circle"></i> Save 10% Annually</li>
+          <li><i class="fas fa-check-circle"></i> Priority Support</li>
+        </ul>
+        <button class="select-plan-btn" data-plan-id="price_1Rq0bSRtn27UxH2dtwAqaFOS">Select Annual</button>
+      </div>
+
+      <!-- Lifetime Plan Card -->
+      <div class="pricing-card">
+        <h3>Lifetime Access</h3>
+        <p class="price">$100<span> one-time</span></p>
+        <ul>
+          <li><i class="fas fa-check-circle"></i> All Annual Features</li>
+          <li><i class="fas fa-check-circle"></i> Never Pay Again</li>
+          <li><i class="fas fa-check-circle"></i> Exclusive Early Access</li>
+        </ul>
+        <button class="select-plan-btn" data-plan-id="price_1Rq0bSRtn27UxH2dsAjGUmhu">Select Lifetime</button>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="queue-section" id="queueSection" style="display: none;">
+    <div class="queue-container">
+      <h3>Items for Analysis (<span id="queueCount">0</span>)</h3>
+      <ul id="queuedItemsList" class="queued-items-list"></ul>
+      <button class="clear-queue-btn" id="clearQueueBtn" onclick="clearQueue()" style="display: none;">Clear All</button>
+    </div>
+  </section>
+
   <section class="results-section" id="resultsSection" style="display: none;">
-    <div class="results-container">
-      <div class="risk-score">
-        <div class="score-circle">
-          <span id="riskScore">0</span>
-        </div>
-        <h3>Risk Score</h3>
-      </div>
-      <div class="analysis-content">
-        <div class="analysis-section">
-          <h3><i class="fas fa-exclamation-triangle"></i> Red Flags</h3>
-          <ul id="redFlags"></ul>
-        </div>
-        <div class="analysis-section">
-          <h3><i class="fas fa-bug"></i> Potential Threats</h3>
-          <ul id="threats"></ul>
-        </div>
-        <div class="analysis-section">
-          <h3><i class="fas fa-lightbulb"></i> Recommendations</h3>
-          <ul id="recommendations"></ul>
-        </div>
-        <div class="analysis-section">
-          <h3><i class="fas fa-shield-alt"></i> Safety Tips</h3>
-          <ul id="safetyTips"></ul>
-        </div>
-      </div>
+    <h2>Analysis Results</h2>
+    <div id="allResultsContainer" class="all-results-container">
+      <!-- Individual analysis results will be appended here -->
     </div>
   </section>
 
@@ -127,27 +180,356 @@
     let currentFile = null;
     let currentText = '';
     let currentPastedImage = null;
-
+    let queuedItems = []; // New: Array to store items for batch analysis
+    let itemIdCounter = 0; // New: Counter for unique item IDs
+    
+    // New: User authentication state
+    let currentUser = {
+      userId: null,
+      email: null,
+      token: null,
+      isAuthenticated: false,
+      isSubscribed: false
+    };
+    // New: Helper function to make authenticated API requests
+    function fetchProtected(url, options = {}) {
+      if (!currentUser.token) {
+        throw new Error('No authentication token available');
+      }
+      
+      const authOptions = {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${currentUser.token}`
+        }
+      };
+      
+      return fetch(url, authOptions);
+    }
+    // New: Function to load user from localStorage on page load
+    function loadUserFromStorage() {
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        try {
+          currentUser = JSON.parse(storedUser);
+          updateUIForAuth();
+        } catch (error) {
+          console.error('Error loading user from storage:', error);
+          localStorage.removeItem('currentUser');
+        }
+      }
+    }
+    // New: Function to save user to localStorage
+    function saveUserToStorage() {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    }
+    // New: Function to update UI based on authentication status
+    function updateUIForAuth() {
+      const authSection = document.getElementById('authSection');
+      const myScansSection = document.getElementById('myScansSection');
+      const dynamicSection = document.querySelector('.dynamic-section');
+      const gridSection = document.querySelector('.grid');
+      const pricingSection = document.getElementById('pricingSection');
+      const loginBtn = document.getElementById('loginBtn');
+      const myScansBtn = document.getElementById('myScansBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      
+      if (currentUser.isAuthenticated) {
+        // User is logged in - show main app, hide auth
+        authSection.style.display = 'none';
+        dynamicSection.style.display = 'flex';
+        gridSection.style.display = 'grid';
+        // myScansSection can be shown/hidden separately
+        
+        // Update header buttons
+        loginBtn.style.display = 'none';
+        myScansBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'inline-block';
+        
+        console.log('User logged in:', currentUser.email);
+      } else {
+        // User is not logged in - show auth, hide main app
+        authSection.style.display = 'none'; // Hide auth by default, show only when needed
+        dynamicSection.style.display = 'flex';
+        gridSection.style.display = 'grid';
+        myScansSection.style.display = 'none';
+        pricingSection.style.display = 'none';
+        
+        // Update header buttons
+        loginBtn.style.display = 'inline-block';
+        myScansBtn.style.display = 'none';
+        logoutBtn.style.display = 'none';
+      }
+    }
+    // New: Function to handle logout
+    function logout() {
+      currentUser = {
+        userId: null,
+        email: null,
+        token: null,
+        isAuthenticated: false,
+        isSubscribed: false
+      };
+      localStorage.removeItem('currentUser');
+      updateUIForAuth();
+    }
+    // New: Function to load user's past scans
+    async function loadPastScans() {
+      try {
+        const response = await fetchProtected('/api/user-scans');
+        if (response.ok) {
+          const scans = await response.json();
+          const pastScansList = document.getElementById('pastScansList');
+          pastScansList.innerHTML = '';
+          
+          if (scans.length === 0) {
+            pastScansList.innerHTML = '<p>No past scans found.</p>';
+            return;
+          }
+          
+          scans.forEach(scan => {
+            const scanCard = document.createElement('div');
+            scanCard.className = 'analysis-card-collapsible';
+            let scanDetails = 'File'; // Default
+            if (scan.original_input) {
+                scanDetails = 'text';
+            } else if (scan.file_path) {
+                const extension = scan.file_path.split('.').pop().toLowerCase();
+                switch (extension) {
+                    case 'pdf':
+                        scanDetails = 'PDF';
+                        break;
+                    case 'txt':
+                        scanDetails = 'Text File';
+                        break;
+                    case 'png':
+                    case 'jpg':
+                    case 'jpeg':
+                        scanDetails = 'Image';
+                        break;
+                    case 'mp3':
+                    case 'wav':
+                    case 'm4a':
+                        scanDetails = 'Audio';
+                        break;
+                }
+            }
+            scanCard.innerHTML = `
+              <div class="collapsible-header">
+                <h3>Scan from ${new Date(scan.createdAt).toLocaleDateString()}</h3>
+                <p>${scanDetails}</p>
+                <button class="expand-btn"><i class="fas fa-chevron-down"></i></button>
+              </div>
+              <div class="collapsible-content">
+                <div class="risk-score">
+                  <div class="score-circle">
+                    <span>${scan.result.riskScore || 0}</span>
+                  </div>
+                  <h3>Risk Score</h3>
+                </div>
+                <div class="analysis-content">
+                  <div class="analysis-section">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Red Flags</h3>
+                    <ul class="redFlags"></ul>
+                  </div>
+                  <div class="analysis-section">
+                    <h3><i class="fas fa-bug"></i> Potential Threats</h3>
+                    <ul class="threats"></ul>
+                  </div>
+                  <div class="analysis-section">
+                    <h3><i class="fas fa-lightbulb"></i> Recommendations</h3>
+                    <ul class="recommendations"></ul>
+                  </div>
+                  <div class="analysis-section">
+                    <h3><i class="fas fa-shield-alt"></i> Safety Tips</h3>
+                    <ul class="safetyTips"></ul>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            // Populate the scan data
+            const scoreCircle = scanCard.querySelector('.score-circle');
+            const riskScoreSpan = scoreCircle.querySelector('span');
+            if (riskScoreSpan) {
+              riskScoreSpan.textContent = scan.result.riskScore || 0;
+              const score = scan.result.riskScore || 0;
+              if (score >= 70) { scoreCircle.style.backgroundColor = '#ef4444'; }
+              else if (score >= 40) { scoreCircle.style.backgroundColor = '#f59e0b'; }
+              else { scoreCircle.style.backgroundColor = '#10b981'; }
+            }
+            updateList(scanCard.querySelector('.redFlags'), scan.result.redFlags || []);
+            updateList(scanCard.querySelector('.threats'), scan.result.threats || []);
+            updateList(scanCard.querySelector('.recommendations'), scan.result.recommendations || []);
+            updateList(scanCard.querySelector('.safetyTips'), scan.result.safetyTips || []);
+            
+            pastScansList.appendChild(scanCard);
+          });
+          // Add event listeners for collapsibles
+          document.querySelectorAll('.collapsible-header').forEach(header => {
+            header.addEventListener('click', () => {
+              header.parentElement.classList.toggle('active');
+              const icon = header.querySelector('.expand-btn i');
+              icon.classList.toggle('fa-chevron-down');
+              icon.classList.toggle('fa-chevron-up');
+            });
+          });
+        } else {
+          console.error('Failed to load past scans');
+        }
+      } catch (error) {
+        console.error('Error loading past scans:', error);
+      }
+    }
     // Main input elements
     const mainInput = document.getElementById('mainInput');
     const inputContainer = document.getElementById('inputContainer');
     const inputOverlay = document.getElementById('inputOverlay');
     const fileInput = document.getElementById('fileInput');
     const analyzeBtn = document.getElementById('analyzeBtn');
-
+    const addToQueueBtn = document.getElementById('addToQueueBtn'); // New: Add to Queue button
+    // Queue elements
+    const queueSection = document.getElementById('queueSection'); // New
+    const queueCountSpan = document.getElementById('queueCount'); // New
+    const queuedItemsList = document.getElementById('queuedItemsList'); // New
+    const clearQueueBtn = document.getElementById('clearQueueBtn'); // New
+    // New: Auth form elements
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const authLoginBtn = document.getElementById('authLoginBtn'); // Renamed to avoid conflict with header loginBtn
+    const signupBtn = document.getElementById('signupBtn');
+    const showSignupLink = document.getElementById('showSignup');
+    const showLoginLink = document.getElementById('showLogin');
+    // New: Auth event listeners
+    showSignupLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'block';
+    });
+    showLoginLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      signupForm.style.display = 'none';
+      loginForm.style.display = 'block';
+    });
+    // New: Header button event listeners
+    document.getElementById('loginBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('authSection').style.display = 'block';
+      document.getElementById('authSection').scrollIntoView({ behavior: 'smooth' });
+    });
+    document.getElementById('myScansBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('myScansSection').style.display = 'block';
+      document.getElementById('myScansSection').scrollIntoView({ behavior: 'smooth' });
+      loadPastScans(); // Load user's past scans
+    });
+    document.getElementById('logoutBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      logout();
+    });
+    // Close auth window
+    document.getElementById('authCloseBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('authSection').style.display = 'none';
+    });
+    // Close scans window
+    document.getElementById('scansCloseBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('myScansSection').style.display = 'none';
+    });
+    signupBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('signupEmail').value;
+      const password = document.getElementById('signupPassword').value;
+      if (!email || !password) {
+        alert('Please fill in all fields');
+        return;
+      }
+      try {
+        const response = await fetch('/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          currentUser = {
+            userId: data.userId,
+            email: data.email,
+            token: data.token,
+            isAuthenticated: true,
+            isSubscribed: data.isSubscribed || false
+          };
+          saveUserToStorage();
+          updateUIForAuth();
+          
+          // Close the auth window and redirect to the dashboard
+          document.getElementById('authSection').style.display = 'none';
+          document.getElementById('myScansSection').style.display = 'block';
+          document.getElementById('myScansSection').scrollIntoView({ behavior: 'smooth' });
+          loadPastScans();
+          // Clear signup form
+          document.getElementById('signupEmail').value = '';
+          document.getElementById('signupPassword').value = '';
+        } else {
+          const errorText = await response.text();
+          alert('Signup failed: ' + errorText);
+        }
+      } catch (error) {
+        console.error('Signup error:', error);
+        alert('Signup failed: Network error');
+      }
+    });
+    authLoginBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      if (!email || !password) {
+        alert('Please fill in all fields');
+        return;
+      }
+      try {
+        const response = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          currentUser = {
+            userId: data.userId,
+            email: data.email,
+            token: data.token,
+            isAuthenticated: true,
+            isSubscribed: data.isSubscribed || false
+          };
+          saveUserToStorage();
+          updateUIForAuth();
+          // Clear login form
+          document.getElementById('loginEmail').value = '';
+          document.getElementById('loginPassword').value = '';
+        } else {
+          const errorText = await response.text();
+          alert('Login failed: ' + errorText);
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed: Network error');
+      }
+    });
     // Drag and drop over text field
     inputContainer.addEventListener('dragover', (e) => {
       e.preventDefault();
       inputOverlay.style.display = 'flex';
     });
-
     inputContainer.addEventListener('dragleave', (e) => {
       e.preventDefault();
       if (!inputContainer.contains(e.relatedTarget)) {
         inputOverlay.style.display = 'none';
       }
     });
-
     inputContainer.addEventListener('drop', (e) => {
       e.preventDefault();
       inputOverlay.style.display = 'none';
@@ -156,14 +538,12 @@
         handleFile(files[0]);
       }
     });
-
     // Paste event handling
     mainInput.addEventListener('paste', (e) => {
       e.preventDefault();
       
       const items = e.clipboardData.items;
       let hasContent = false;
-
       for (let item of items) {
         if (item.type.indexOf('image') !== -1) {
           // Handle pasted image
@@ -175,19 +555,18 @@
           item.getAsString((text) => {
             mainInput.value += text;
             currentText = mainInput.value;
-            updateAnalyzeButton();
+            updateButtons(); // Changed from updateAnalyzeButton
           });
           hasContent = true;
         }
       }
-
       if (!hasContent) {
         // Fallback: try to get text from clipboard
         navigator.clipboard.readText().then(text => {
           if (text) {
             mainInput.value += text;
             currentText = mainInput.value;
-            updateAnalyzeButton();
+            updateButtons(); // Changed from updateAnalyzeButton
           }
         }).catch(() => {
           // If clipboard API fails, allow default paste behavior
@@ -195,26 +574,22 @@
         });
       }
     });
-
     // File input change
     fileInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
         handleFile(e.target.files[0]);
       }
     });
-
     // Text input change
     mainInput.addEventListener('input', (e) => {
       currentText = e.target.value;
-      updateAnalyzeButton();
+      updateButtons(); // Changed from updateAnalyzeButton
     });
-
     function handleFile(file) {
       currentFile = file;
       showFilePreview(file.name);
-      updateAnalyzeButton();
+      updateButtons(); // Changed from updateAnalyzeButton
     }
-
     function showFilePreview(fileName) {
       // Create or update file preview
       let filePreview = document.getElementById('filePreview');
@@ -234,7 +609,6 @@
       document.getElementById('fileName').textContent = fileName;
       filePreview.style.display = 'block';
     }
-
     function removeFile() {
       currentFile = null;
       currentPastedImage = null;
@@ -242,97 +616,399 @@
       if (filePreview) {
         filePreview.style.display = 'none';
       }
-      updateAnalyzeButton();
+      updateButtons(); // Changed from updateAnalyzeButton
     }
-
-    function updateAnalyzeButton() {
-      const hasContent = (currentFile !== null) || (currentText.trim() !== '') || (currentPastedImage !== null);
-      analyzeBtn.disabled = !hasContent;
+    // New: Function to update both analyze and add to queue buttons
+    function updateButtons() {
+      const hasContent = (currentFile !== null) || (currentText.trim() !== '');
+      analyzeBtn.disabled = queuedItems.length === 0; // Analyze button enabled only if queue has items
+      addToQueueBtn.disabled = !hasContent; // Add to Queue button enabled if current input has content
     }
-
-    async function analyzeContent() {
-      const formData = new FormData();
-      
+    // New: Add current input to queue
+    function addToQueue() {
       if (currentFile) {
-        formData.append('file', currentFile);
+        queuedItems.push({
+          id: itemIdCounter++,
+          type: 'file',
+          name: currentFile.name,
+          data: currentFile // Store the File object
+        });
+        clearInput();
+      } else if (currentText.trim()) {
+        queuedItems.push({
+          id: itemIdCounter++,
+          type: 'text',
+          content: currentText.trim()
+        });
+        clearInput();
       }
-      
-      if (currentText.trim()) {
-        formData.append('text', currentText);
+      updateQueueList();
+      updateButtons();
+    }
+    // New: Clear the main input area
+    function clearInput() {
+      mainInput.value = '';
+      currentText = '';
+      removeFile(); // This also sets currentFile/currentPastedImage to null
+    }
+    // New: Update the displayed list of queued items
+    function updateQueueList() {
+      queuedItemsList.innerHTML = '';
+      if (queuedItems.length > 0) {
+        queueSection.style.display = 'block';
+        clearQueueBtn.style.display = 'block';
+        queuedItems.forEach(item => {
+          const li = document.createElement('li');
+          li.className = 'queued-item';
+          li.innerHTML = `
+            <span>${item.type === 'file' ? item.name : item.content.substring(0, 50) + (item.content.length > 50 ? '...' : '')}</span>
+            <button class="remove-queued-item-btn" data-id="${item.id}">×</button>
+          `;
+          queuedItemsList.appendChild(li);
+        });
+        // Add event listeners for new remove buttons
+        queuedItemsList.querySelectorAll('.remove-queued-item-btn').forEach(button => {
+          button.addEventListener('click', (e) => removeQueuedItem(parseInt(e.target.dataset.id)));
+        });
+      } else {
+        queueSection.style.display = 'none';
+        clearQueueBtn.style.display = 'none';
+      }
+      queueCountSpan.textContent = queuedItems.length;
+    }
+    // New: Remove a specific item from the queue
+    function removeQueuedItem(id) {
+      queuedItems = queuedItems.filter(item => item.id !== id);
+      updateQueueList();
+      updateButtons();
+    }
+    // New: Clear all items from the queue
+    function clearQueue() {
+      queuedItems = [];
+      updateQueueList();
+      updateButtons();
+    }
+    // Modified analyzeContent to get analysisId and pass to displaySingleResult
+    async function analyzeContent() {
+      if (queuedItems.length === 0) {
+        alert('Please add items to the queue before analyzing.');
+        return;
       }
 
-      // Show loading state
-      analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
-      analyzeBtn.disabled = true;
+      if (!currentUser.isAuthenticated) {
+        document.getElementById('authSection').style.display = 'block';
+        document.getElementById('authSection').scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
 
+      if (currentUser.isSubscribed) {
+        document.getElementById('resultsSection').style.display = 'block';
+        document.getElementById('pricingSection').style.display = 'none';
+        await processAndDisplaySubscribedUserResults();
+        return;
+      }
+
+      // If user is not subscribed, show the pricing/paywall
+      document.getElementById('pricingSection').style.display = 'block';
+      document.getElementById('pricingSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function processAndDisplaySubscribedUserResults() {
+        analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        analyzeBtn.disabled = true;
+        addToQueueBtn.disabled = true;
+        clearQueueBtn.disabled = true;
+
+        const allResultsContainer = document.getElementById('allResultsContainer');
+        allResultsContainer.innerHTML = '';
+        document.getElementById('resultsSection').style.display = 'block';
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+
+        for (const item of queuedItems) {
+            const formData = new FormData();
+            if (item.type === 'file') {
+                formData.append('file', item.data, item.name);
+            } else if (item.type === 'text') {
+                formData.append('text', item.content);
+            }
+
+            const resultCard = createResultCard(item);
+            allResultsContainer.appendChild(resultCard);
+
+            try {
+                const response = await fetchProtected('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    await displaySubscribedResult(resultCard, result.analysisId);
+                } else {
+                    displayErrorOnCard(resultCard, result.error || 'Analysis failed');
+                }
+            } catch (error) {
+                console.error('Error during analysis of item:', item, error);
+                displayErrorOnCard(resultCard, 'Network Error: Could not connect to server.');
+            }
+        }
+
+        clearQueue();
+        resetButtons();
+    }
+
+        function createResultCard(item) {
+        const resultCard = document.createElement('div');
+        resultCard.className = 'results-container analysis-card';
+        resultCard.id = `result-card-${item.id}`;
+        resultCard.innerHTML = `
+            <h3>Analyzing: ${item.type === 'file' ? item.name : item.content.substring(0, 50) + (item.content.length > 50 ? '...' : '')}</h3>
+            <div class="risk-score">
+                <div class="score-circle loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <h3>Risk Score</h3>
+            </div>
+            <div class="analysis-content">
+                <div class="analysis-section">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Red Flags</h3>
+                    <ul class="redFlags"><li>Analyzing...</li></ul>
+                </div>
+                <div class="analysis-section">
+                    <h3><i class="fas fa-bug"></i> Potential Threats</h3>
+                    <ul class="threats"><li>Analyzing...</li></ul>
+                </div>
+                <div class="analysis-section">
+                    <h3><i class="fas fa-lightbulb"></i> Recommendations</h3>
+                    <ul class="recommendations"><li>Analyzing...</li></ul>
+                </div>
+                <div class="analysis-section">
+                    <h3><i class="fas fa-shield-alt"></i> Safety Tips</h3>
+                    <ul class="safetyTips"><li>Analyzing...</li></ul>
+                </div>
+            </div>
+        `;
+        return resultCard;
+    }
+    async function displaySubscribedResult(resultCard, analysisId) {
+        if (!resultCard) return;
+        try {
+            const response = await fetchProtected(`/api/results/${analysisId}`);
+            if (response.ok) {
+                const fullResult = await response.json();
+                populateResultCard(resultCard, fullResult);
+            } else {
+                const errorData = await response.json();
+                displayErrorOnCard(resultCard, errorData.error || 'Failed to load results.');
+            }
+        } catch (error) {
+            console.error('Error fetching subscribed result:', error);
+            displayErrorOnCard(resultCard, 'Network error while fetching results.');
+        }
+    }
+    function resetButtons() {
+        analyzeBtn.innerHTML = '<i class="fas fa-shield-alt"></i> Analyze for Scams';
+        analyzeBtn.disabled = queuedItems.length === 0;
+        addToQueueBtn.disabled = false;
+        clearQueueBtn.disabled = queuedItems.length === 0;
+    }
+    function displayErrorOnCard(card, errorDetails) {
+        const scoreCircle = card.querySelector('.score-circle');
+        scoreCircle.classList.remove('loading-spinner');
+        scoreCircle.style.backgroundColor = '#ef4444'; // Red for error
+        scoreCircle.innerHTML = `<span>!</span>`;
+        const analysisContent = card.querySelector('.analysis-content');
+        analysisContent.classList.remove('results-blurred');
+        
+        const redFlagsList = card.querySelector('.redFlags');
+        updateList(redFlagsList, [`Error: ${errorDetails}`]);
+        // Clear other lists
+        updateList(card.querySelector('.threats'), []);
+        updateList(card.querySelector('.recommendations'), []);
+        updateList(card.querySelector('.safetyTips'), []);
+    }
+    function populateResultCard(card, resultData) {
+        const analysisContent = card.querySelector('.analysis-content');
+        analysisContent.classList.remove('results-blurred');
+        const checkoutBtn = card.querySelector('.checkout-for-results-btn');
+        if (checkoutBtn) checkoutBtn.style.display = 'none';
+        const scoreCircle = card.querySelector('.score-circle');
+        scoreCircle.classList.remove('loading-spinner');
+        scoreCircle.innerHTML = `<span>${resultData.riskScore || 0}</span>`;
+        const score = resultData.riskScore || 0;
+        if (score >= 70) { scoreCircle.style.backgroundColor = '#ef4444'; }
+        else if (score >= 40) { scoreCircle.style.backgroundColor = '#f59e0b'; }
+        else { scoreCircle.style.backgroundColor = '#10b981'; }
+        updateList(card.querySelector('.redFlags'), resultData.redFlags || []);
+        updateList(card.querySelector('.threats'), resultData.threats || []);
+        updateList(card.querySelector('.recommendations'), resultData.recommendations || []);
+        updateList(card.querySelector('.safetyTips'), resultData.safetyTips || []);
+    }
+    // New: Function to initiate Stripe Checkout
+    async function initiateCheckout(priceId) {
       try {
-        const response = await fetch('/api/analyze', {
+        const response = await fetchProtected('/create-checkout-session', {
           method: 'POST',
-          body: formData
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ priceId: priceId }),
         });
 
-        const result = await response.json();
-
-        if (response.ok) {
-          displayResults(result);
-        } else {
-          alert('Error: ' + (result.error || 'Analysis failed'));
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create checkout session');
         }
+
+        const session = await response.json();
+        const stripe = Stripe('pk_test_51Rq0UfRtn27UxH2daBH0qVADulqyFux0tFfwI4GKLl7dMuMwZ3iQMEm4yCj7jNxaiDykALmRkPrFADbDUVreR83F00joLrFlJv'); // Replace with your actual publishable key
+        stripe.redirectToCheckout({ sessionId: session.id });
       } catch (error) {
-        console.error('Error:', error);
-        alert('Error: Could not connect to server');
-      } finally {
-        // Reset button
-        analyzeBtn.innerHTML = '<i class="fas fa-shield-alt"></i> Analyze for Scams';
-        analyzeBtn.disabled = false;
+        console.error('Error initiating payment:', error);
+        alert('Error initiating payment: ' + error.message);
       }
     }
-
-    function displayResults(result) {
-      // Update risk score
-      document.getElementById('riskScore').textContent = result.riskScore || 0;
-      
-      // Update risk score color
-      const scoreCircle = document.querySelector('.score-circle');
-      const score = result.riskScore || 0;
-      if (score >= 70) {
-        scoreCircle.style.backgroundColor = '#ef4444';
-      } else if (score >= 40) {
-        scoreCircle.style.backgroundColor = '#f59e0b';
-      } else {
-        scoreCircle.style.backgroundColor = '#10b981';
-      }
-
-      // Update lists
-      updateList('redFlags', result.redFlags || []);
-      updateList('threats', result.threats || []);
-      updateList('recommendations', result.recommendations || []);
-      updateList('safetyTips', result.safetyTips || []);
-
-      // Show results
-      document.getElementById('resultsSection').style.display = 'block';
-      document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function updateList(elementId, items) {
-      const element = document.getElementById(elementId);
+    // Modified: updateList to accept an element directly
+    function updateList(element, items) {
       element.innerHTML = '';
+      if (items.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No items found or N/A.';
+        element.appendChild(li);
+        return;
+      }
       items.forEach(item => {
         const li = document.createElement('li');
         li.textContent = item;
         element.appendChild(li);
       });
     }
-
-    function updateBox(selection) {
-      const box = document.getElementById('inputBox');
-      if (selection === 'message' || selection === 'email') {
-        box.innerHTML = '<textarea placeholder="Paste your content here..."></textarea>';
-      } else if (selection === 'screenshot') {
-        box.innerHTML = '<input type="file" accept="image/*">';
-      } else if (selection === 'audio') {
-        box.innerHTML = '<input type="file" accept=".m4a,.mp3,.wav">';
+    // New: Function to check URL for payment status and load results
+    async function checkPaymentStatusAndLoadResults() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const analysisId = urlParams.get('analysis_id');
+      const sessionId = urlParams.get('session_id'); // Optional, for Stripe confirmation if needed
+      if (analysisId) {
+        // If we landed here from success.html or if `paid=true` in URL, mark payment as complete on backend
+        if (urlParams.get('paid') === 'true') {
+            try {
+                // Use fetchProtected for authenticated request
+                const response = await fetchProtected('/api/mark-paid', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ analysisId: analysisId })
+                });
+                const result = await response.json();
+                if (result.status !== 'success') {
+                    console.error('Failed to mark payment as paid:', result.error);
+                }
+                // Fall through to display results
+            } catch (error) {
+                console.error('Error marking payment paid:', error);
+                alert('Could not confirm payment. Please contact support.');
+                return; // Stop here if marking paid fails
+            }
+        }
+        // If `paid=true` in URL or we just marked it paid, try to fetch results
+        if (urlParams.get('paid') === 'true') {
+            try {
+                // Use fetchProtected for authenticated request
+                const response = await fetchProtected(`/api/results/${analysisId}`);
+                if (response.ok) {
+                    const paidResult = await response.json();
+                    // Find the card and display the result
+                    let resultCard = document.querySelector(`[data-analysis-id="${analysisId}"]`);
+                    if (resultCard) {
+                        populateResultCard(resultCard, paidResult);
+                    } else {
+                        // If results card doesn't exist yet (e.g., direct link after payment)
+                        // Create a new result card to display the paid results
+                        const allResultsContainer = document.getElementById('allResultsContainer');
+                        const newResultCard = document.createElement('div');
+                        newResultCard.className = 'results-container analysis-card';
+                        newResultCard.id = `result-card-${analysisId}`; // Use analysisId as unique ID
+                        newResultCard.dataset.analysisId = analysisId; // Set data attribute
+                        newResultCard.innerHTML = `
+                            <h3>Analysis Result for ID: ${analysisId}</h3>
+                            <div class="risk-score">
+                                <div class="score-circle">
+                                    <span>${paidResult.riskScore || 0}</span>
+                                </div>
+                                <h3>Risk Score</h3>
+                            </div>
+                            <div class="analysis-content">
+                                <div class="analysis-section">
+                                    <h3><i class="fas fa-exclamation-triangle"></i> Red Flags</h3>
+                                    <ul class="redFlags"></ul>
+                                 </div>
+                                <div class="analysis-section">
+                                    <h3><i class="fas fa-bug"></i> Potential Threats</h3>
+                                    <ul class="threats"></ul>
+                                 </div>
+                                <div class="analysis-section">
+                                    <h3><i class="fas fa-lightbulb"></i> Recommendations</h3>
+                                    <ul class="recommendations"></ul>
+                                 </div>
+                                <div class="analysis-section">
+                                    <h3><i class="fas fa-shield-alt"></i> Safety Tips</h3>
+                                    <ul class="safetyTips"></ul>
+                                 </div>
+                             </div>
+                        `;
+                        allResultsContainer.appendChild(newResultCard);
+                        populateResultCard(newResultCard, paidResult);
+                    }
+                } else {
+                    const errorData = await response.json();
+                    alert('Failed to load paid results: ' + (errorData.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error fetching paid results:', error);
+                alert('Error loading results: Could not connect to server.');
+            }
+        }
       }
+    }
+    // New: Function to poll subscription status
+    async function pollSubscriptionStatus() {
+      if (!currentUser.isAuthenticated) {
+        return;
+      }
+      try {
+        const response = await fetchProtected('/api/user-subscription');
+        if (response.ok) {
+          const subscriptionData = await response.json();
+          if (subscriptionData.isSubscribed !== currentUser.isSubscribed) {
+            currentUser.isSubscribed = subscriptionData.isSubscribed;
+            saveUserToStorage();
+            updateUIForAuth(); // Update UI to reflect new subscription status
+            console.log('Subscription status updated:', currentUser.isSubscribed);
+          }
+        } else {
+          console.error('Failed to poll subscription status');
+        }
+      } catch (error) {
+        console.error('Error polling subscription status:', error);
+      }
+    }
+    // Initial setup
+    updateButtons();
+    
+    // New: Add event listeners for plan selection buttons
+    document.querySelectorAll('.select-plan-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const priceId = e.target.dataset.planId;
+        initiateCheckout(priceId);
+      });
+    });
+    
+    // New: Load user from storage and update UI on page load
+    loadUserFromStorage();
+    
+    // New: Check for payment status only if user is authenticated
+    if (currentUser.isAuthenticated) {
+      checkPaymentStatusAndLoadResults();
+      // Start polling for subscription status
+      setInterval(pollSubscriptionStatus, 30000); // Poll every 30 seconds
     }
   </script>
 </body>

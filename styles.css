@@ -8,8 +8,8 @@ body {
 header {
   background-color: #15003e;
   color: white;
-  display: flex;
-  justify-content: space-between;
+  display: flex; /* Changed to flex for alignment */
+  justify-content: space-between; /* Distribute items */
   align-items: center;
   padding: 1rem 2rem;
 }
@@ -19,16 +19,27 @@ header img.logo {
   margin-right: 1rem;
 }
 
-header .left-section {
+.header-left-group {
   display: flex;
   align-items: center;
+  gap: 1rem; /* Space between logo and title */
 }
 
-header nav a {
+header strong {
+  white-space: nowrap;
+  font-size: 2.4rem; /* Twice the slogan size (1.2rem * 2 = 2.4rem) */
+}
+
+.header-slogan {
+  font-size: 1.2rem;
+  line-height: 1.2;
   color: white;
-  margin: 0 1rem;
-  text-decoration: none;
-  font-weight: 500;
+  margin: 0;
+  max-width: 400px;
+  flex-grow: 1; /* Allow slogan to take up available space */
+  text-align: center; /* Center the slogan text */
+  white-space: nowrap; /* Ensure slogan stays on one line */
+  margin-right: 1rem; /* Add some space if user info pushes it */
 }
 
 .cta-button {
@@ -81,13 +92,7 @@ header nav a {
   padding: 1.5rem;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  transition: border 0.3s ease, transform 0.3s ease;
   border: 2px solid transparent;
-}
-
-.card:hover {
-  border-color: #15003e;
-  transform: translateY(-2px);
 }
 
 .card-icon {
@@ -254,10 +259,6 @@ footer {
   justify-content: center;
 }
 
-.remove-btn:hover {
-  background-color: #dc2626;
-}
-
 /* Analyze Button */
 .analyze-btn {
   background-color: #10b981;
@@ -269,19 +270,121 @@ footer {
   font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  width: 100%;
-  margin-top: 1rem;
-}
+  
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 
-.analyze-btn:hover:not(:disabled) {
-  background-color: #059669;
-  transform: translateY(-2px);
+  height: 52px; /* Fixed height for consistent sizing */
+  flex-grow: 1; /* Allows it to take up remaining space */
+  /* Removed: width property */
 }
 
 .analyze-btn:disabled {
   background-color: #9ca3af;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Add to Queue Button */
+.add-to-queue-btn {
+  background-color: #3e92b5;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  height: 52px; /* Fixed height for consistent sizing */
+  flex-basis: 160px; /* Preferred width */
+  flex-shrink: 0; /* Prevent it from shrinking */
+  /* Removed: width property */
+}
+
+.add-to-queue-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.input-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem; /* Reverted: Space between the two buttons */
+  margin-top: 2px; /* Corrected: Space between text box and buttons */
+}
+
+/* Queue Section Styles */
+.queue-section {
+  padding: 2rem;
+  background-color: #f5f5f5;
+}
+
+.queue-container {
+  max-width: 600px;
+  margin: 0 auto;
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.queue-container h3 {
+  margin-top: 0;
+  color: #15003e;
+}
+
+.queued-items-list {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+.queued-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f9f9f9;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.remove-queued-item-btn {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.clear-queue-btn {
+  background-color: #ef8e87;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
 }
 
 /* Results Section */
@@ -393,4 +496,418 @@ footer {
   .upload-icon {
     font-size: 2rem;
   }
+}
+
+.all-results-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.analysis-card {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: grid;
+  grid-template-columns: 1fr 2fr; /* Adjusted for consistent layout */
+  gap: 2rem;
+  position: relative; /* Needed for blur overlay */
+}
+
+.analysis-card h3 {
+  font-size: 1.5rem;
+  color: #15003e;
+  margin-bottom: 1.5rem;
+  grid-column: 1 / -1; /* Span across both columns */
+}
+
+.analysis-card .risk-score {
+  padding: 1rem;
+}
+
+.analysis-card .score-circle {
+  width: 100px;
+  height: 100px;
+  font-size: 2rem;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* New: Blur effect for results content */
+.analysis-content.results-blurred {
+  filter: blur(8px); /* Apply blur */
+  pointer-events: none; /* Prevent interaction with blurred content */
+  user-select: none; /* Prevent selecting blurred text */
+}
+
+/* New: Overlay to hint at blurred content and cover interaction */
+.analysis-card:has(.results-blurred)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent overlay */
+  z-index: 5; /* Above blurred content but below button */
+  border-radius: 15px; /* Match card radius */
+  cursor: not-allowed;
+}
+
+/* New: Style for Checkout for Results button */
+.checkout-for-results-btn {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: fit-content; /* Adjust width to content */
+  margin: 1rem auto 0; /* Center horizontally below blurred content */
+  display: block; /* Takes full width and centers with margin auto */
+  z-index: 10; /* Above blur overlay */
+  position: absolute; /* Position over blur */
+  bottom: 2rem; /* Adjust as needed */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.checkout-for-results-btn:hover {
+  background-color: #059669;
+}
+
+/* --- New: Pricing Section Styles --- */
+.pricing-section {
+  padding: 4rem 2rem;
+  text-align: center;
+  background-color: #f9fafb;
+}
+
+.pricing-section h2 {
+  font-size: 2.5rem;
+  color: #15003e;
+  margin-bottom: 3rem;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.pricing-card {
+  background-color: white;
+  padding: 2.5rem 2rem;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pricing-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+}
+
+.pricing-card h3 {
+  font-size: 1.8rem;
+  color: #15003e;
+  margin-bottom: 1rem;
+}
+
+.pricing-card .price {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #3e92b5;
+  margin-bottom: 1.5rem;
+}
+
+.pricing-card .price span {
+  font-size: 1.2rem;
+  font-weight: normal;
+  color: #6b7280;
+}
+
+.pricing-card ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 2rem;
+  text-align: left;
+  width: 100%;
+}
+
+.pricing-card ul li {
+  margin-bottom: 0.8rem;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1.05rem;
+}
+
+.pricing-card ul li i {
+  color: #10b981;
+  font-size: 1.2rem;
+}
+
+.select-plan-btn {
+  background-color: #15003e;
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: auto; /* Push button to the bottom of the card */
+}
+
+.select-plan-btn:hover {
+  background-color: #3e92b5;
 } 
+
+/* --- New: Authentication Section Styles --- */
+.auth-section {
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(249, 250, 251, 0.95);
+  min-height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+.auth-container {
+  background-color: white;
+  padding: 2.5rem;
+  border-radius: 15px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  position: relative;
+  margin: 0 auto;
+}
+
+.auth-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+}
+
+.auth-close-btn:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.auth-form h2 {
+  font-size: 2rem;
+  color: #15003e;
+  margin-bottom: 2rem;
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+  width: calc(100% - 2rem); /* Account for padding */
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.auth-form button {
+  background-color: #3e92b5;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.auth-form button:hover {
+  background-color: #2d7a9a;
+}
+
+.auth-form p {
+  margin-top: 1.5rem;
+  color: #6b7280;
+}
+
+.auth-form p a {
+  color: #3e92b5;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-form p a:hover {
+  text-decoration: underline;
+}
+
+/* --- My Scans Section Styles (similar to results-section) --- */
+.my-scans-section {
+  padding: 4rem 2rem;
+  background-color: #f9fafb;
+}
+
+.my-scans-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: white;
+  padding: 2rem;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.my-scans-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+  z-index: 10;
+}
+
+.my-scans-close-btn:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.my-scans-container h2 {
+  font-size: 2.5rem;
+  color: #15003e;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* Ensure all-results-container styles apply within my-scans-section */
+.my-scans-section .all-results-container .analysis-card {
+  margin-bottom: 1.5rem; /* Space between cards */
+}
+
+/* Header adjustments for user info */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: white;
+  font-weight: 600;
+}
+
+.user-info .cta-button {
+  background-color: #ffc107; /* Highlight for user actions */
+  color: #15003e;
+  border: 2px solid #ffc107;
+}
+
+.user-info .cta-button:hover {
+  background-color: transparent;
+  color: #ffc107;
+  border: 2px solid #ffc107;
+}
+
+.analysis-card-collapsible {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  background-color: #f7fafc;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.collapsible-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2d3748;
+}
+
+.collapsible-header p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #a0aec0;
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+  padding: 0 1.5rem;
+  display: flex;
+  gap: 2rem;
+}
+
+.analysis-card-collapsible.active .collapsible-content {
+  max-height: 1000px; /* Adjust as needed */
+  padding: 1.5rem;
+  border-top: 1px solid #edf2f7;
+}
