@@ -13,6 +13,17 @@ const bcrypt = require('bcrypt'); // New: Import bcrypt
 const jwt = require('jsonwebtoken'); // New: Import jsonwebtoken
 const session = require('express-session'); // New: Import express-session
 const User = require('./models/User'); // New: Import User model
+const validator = require('validator');
+const nodemailer = require('nodemailer');
+
+// Nodemailer transporter setup (using environment variables)
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // e.g., 'gmail'
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS, // For Gmail, this should be an "App Password"
+  },
+});
 
 const app = express();
 const port = 3000;
@@ -111,30 +122,7 @@ async function extractContentFromPDF(pdfPath) {
 
 // Connect to MongoDB and then start the server
 connectDB().then((db) => {
-  const scamsCollection = db.collection('scams'); // Use a new collection name to avoid conflict if 'scams' is generic
   const analysisCollection = db.collection('analysis_metadata'); // New: Collection for analysis results metadata
-
-  // New: MongoDB routes for scam data
-  app.post('/api/upload', async (req, res) => {
-    try {
-      const data = req.body; // Assuming req.body contains the data to store
-      const result = await scamsCollection.insertOne(data);
-      res.json(result);
-    } catch (error) {
-      console.error('Error uploading scam data to MongoDB:', error);
-      res.status(500).json({ error: 'Failed to upload scam data' });
-    }
-  });
-
-  app.get('/api/scams', async (req, res) => {
-    try {
-      const allScams = await scamsCollection.find().toArray();
-      res.json(allScams);
-    } catch (error) {
-      console.error('Error fetching scam data from MongoDB:', error);
-      res.status(500).json({ error: 'Failed to fetch scam data' });
-    }
-  });
 
   // *** New: User Authentication Routes ***
 
@@ -142,6 +130,11 @@ connectDB().then((db) => {
   app.post('/signup', async (req, res) => {
     try {
       const { email, password } = req.body;
+      
+      // 1. Validate Email Format
+      if (!validator.isEmail(email)) {
+        return res.status(400).send('Please enter a valid email address.');
+      }
 
       // Check if user already exists
       const existingUser = await User.findOne({ email });
@@ -152,6 +145,23 @@ connectDB().then((db) => {
       const passwordHash = await bcrypt.hash(password, 10);
       const user = new User({ email, passwordHash });
       await user.save();
+
+      // 2. Send Welcome Email
+      const mailOptions = {
+        from: `"Scan This Scam" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: 'Welcome to Scan This Scam!',
+        html: `<h1>Welcome, ${user.email}!</h1><p>Thank you for signing up. We're excited to have you on board.</p><p>You can now start analyzing content for potential scams.</p>`,
+      };
+      
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error('Error sending welcome email:', error);
+          // We don't block the signup if email fails, just log it
+        } else {
+          console.log('Welcome email sent:', info.response);
+        }
+      });
 
       // Automatically log in the user by generating a JWT token
       const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -250,6 +260,21 @@ connectDB().then((db) => {
             textContentForAI += `Image content (Base64 encoded): [Image ${file.originalname}]\n\n`;
             await unlink(file.path); // Delete file after processing
 
+          } else if (file.mimetype.startsWith('audio/')) {
+            console.log('Processing audio file:', file.originalname);
+            try {
+              const transcription = await openai.audio.transcriptions.create({
+                file: fs.createReadStream(file.path),
+                model: "whisper-1",
+              });
+              textContentForAI += `Audio transcript:\n"${transcription.text}"\n\n`;
+            } catch (transcriptionError) {
+              console.error('Error during audio transcription:', transcriptionError);
+              textContentForAI += `[Error transcribing audio file ${file.originalname}]\n\n`;
+            } finally {
+              await unlink(file.path); // Delete file after processing
+            }
+
           } else {
             // For other file types, you might want to read their content (e.g., audio, docx, txt)
             // For now, we'll just include their info and delete them.
@@ -316,11 +341,26 @@ connectDB().then((db) => {
         
         // Store results in MongoDB
         const analysisId = Date.now().toString(); // Simple unique ID
+        
+        let submissionType = 'text'; // Default to text
+        if (files && files.length > 0) {
+            const file = files[0];
+            if (file.mimetype.startsWith('image/')) {
+                submissionType = 'image';
+            } else if (file.mimetype === 'application/pdf') {
+                submissionType = 'pdf';
+            } else if (file.mimetype.startsWith('audio/')) {
+                submissionType = 'audio';
+            } else {
+                submissionType = 'file'; // Generic file
+            }
+        }
+
         await analysisCollection.insertOne({
           _id: analysisId,
-          userId: req.user.userId, // New: Store userId with the analysis
+          userId: req.user.userId,
+          submissionType: submissionType, // New: Store submission type
           result: jsonResponse,
-          status: 'pending',
           createdAt: new Date()
         });
 
@@ -344,27 +384,6 @@ connectDB().then((db) => {
   }
   });
   
-  // New: Endpoint to mark analysis as paid
-  app.post('/api/mark-paid', authenticateToken, async (req, res) => {
-    const { analysisId } = req.body;
-    try {
-      // Ensure the update is for the authenticated user's analysis
-      const result = await analysisCollection.updateOne(
-        { _id: analysisId, userId: req.user.userId }, // New: Include userId in query
-        { $set: { status: 'paid', paidAt: new Date() } }
-      );
-      if (result.matchedCount === 1) {
-        console.log(`Analysis ID ${analysisId} marked as paid in MongoDB.`);
-        res.json({ status: 'success' });
-      } else {
-        res.status(404).json({ error: 'Analysis ID not found or not owned by user in MongoDB' }); // More specific error
-      }
-    } catch (error) {
-      console.error('Error marking analysis paid in MongoDB:', error);
-      res.status(500).json({ error: 'Failed to mark analysis paid' });
-    }
-  });
-  
   // New: Endpoint to retrieve analysis results (only if paid)
   app.get('/api/results/:analysisId', authenticateToken, async (req, res) => {
     const { analysisId } = req.params;
@@ -372,12 +391,13 @@ connectDB().then((db) => {
       // Ensure only the authenticated user can retrieve their own analysis
       const analysisDoc = await analysisCollection.findOne({ _id: analysisId, userId: req.user.userId }); // New: Include userId in query
       if (analysisDoc) {
-        if (analysisDoc.status === 'paid' || (await User.findById(req.user.userId)).isSubscribed) {
+        const user = await User.findById(req.user.userId);
+        const isSubscribed = user && user.isSubscribed && user.subscriptionEndDate && user.subscriptionEndDate > new Date();
+        
+        if (isSubscribed) {
           res.json(analysisDoc.result); // Return the actual result
-        } else if (analysisDoc.status === 'pending') {
-          res.status(403).json({ error: 'Payment required for these results.' });
         } else {
-          res.status(404).json({ error: 'Analysis status unknown.' });
+          res.status(403).json({ error: 'A valid subscription is required to view results.' });
         }
       } else {
         res.status(404).json({ error: 'Analysis results not found or not owned by user.' }); // More specific error
@@ -391,8 +411,44 @@ connectDB().then((db) => {
   // New: Endpoint to retrieve all analysis results for a logged-in user
   app.get('/api/user-scans', authenticateToken, async (req, res) => {
     try {
-      const userId = req.user.userId; // Get userId from authenticated token
-      const userScans = await analysisCollection.find({ userId: userId }).toArray();
+      const userId = req.user.userId;
+      const { contentTypes, riskLevels, startDate, endDate } = req.query;
+
+      // New: More robust query building
+      let queryConditions = [{ userId: userId }];
+
+      if (contentTypes) {
+        queryConditions.push({ submissionType: { $in: contentTypes.split(',') } });
+      }
+
+      if (riskLevels) {
+        const riskOrConditions = riskLevels.split(',').map(level => {
+          if (level === 'low') return { 'result.riskScore': { $gte: 0, $lte: 25 } };
+          if (level === 'medium') return { 'result.riskScore': { $gte: 26, $lte: 75 } };
+          if (level === 'high') return { 'result.riskScore': { $gte: 76, $lte: 100 } };
+        }).filter(Boolean);
+        
+        if (riskOrConditions.length > 0) {
+          queryConditions.push({ $or: riskOrConditions });
+        }
+      }
+      
+      if (startDate || endDate) {
+        const dateQuery = {};
+        if (startDate) {
+          dateQuery.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          dateQuery.$lte = new Date(endDate);
+        }
+        queryConditions.push({ createdAt: dateQuery });
+      }
+
+      const finalQuery = queryConditions.length > 1 ? { $and: queryConditions } : queryConditions[0];
+      
+      console.log("Executing DB query:", JSON.stringify(finalQuery, null, 2));
+
+      const userScans = await analysisCollection.find(finalQuery).sort({ createdAt: -1 }).toArray();
       res.json(userScans);
     } catch (error) {
       console.error('Error fetching user scans from MongoDB:', error);
@@ -408,7 +464,17 @@ connectDB().then((db) => {
       if (!user) {
         return res.status(404).json({ error: 'User not found.' });
       }
-      res.json({ isSubscribed: user.isSubscribed });
+      
+      const isSubscribed = user.isSubscribed && user.subscriptionEndDate && user.subscriptionEndDate > new Date();
+      
+      // If the subscription has expired, update the database
+      if (user.isSubscribed && !isSubscribed) {
+        user.isSubscribed = false;
+        await user.save();
+        console.log(`Subscription for user ${userId} has expired. Status updated.`);
+      }
+
+      res.json({ isSubscribed: isSubscribed });
     } catch (error) {
       console.error('Error fetching user subscription status:', error);
       res.status(500).json({ error: 'Failed to retrieve subscription status' });
@@ -419,6 +485,29 @@ connectDB().then((db) => {
     app.post('/create-checkout-session', authenticateToken, async (req, res) => {
     try {
       const { priceId } = req.body;
+      const userId = req.user.userId;
+
+      // Find the user in your database
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      let stripeCustomerId = user.stripeCustomerId;
+
+      // If the user doesn't have a Stripe Customer ID, create one
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          metadata: { userId: userId },
+        });
+        stripeCustomerId = customer.id;
+        // Save the new customer ID to the user record
+        user.stripeCustomerId = stripeCustomerId;
+        await user.save();
+        console.log(`New Stripe Customer created and saved for user ${userId}`);
+      }
+      
       const price = await stripe.prices.retrieve(priceId);
       const mode = price.recurring ? 'subscription' : 'payment';
 
@@ -429,15 +518,90 @@ connectDB().then((db) => {
           quantity: 1,
         }],
         mode: mode,
+        customer: stripeCustomerId, // Use the customer ID here
         success_url: `${req.protocol}://${req.get('host')}/success.html?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${req.protocol}://${req.get('host')}/cancel.html`,
-        metadata: { userId: req.user.userId },
+        metadata: { userId: userId }, // Keep this for the webhook
       });
 
       res.json({ id: session.id });
     } catch (e) {
       console.error('Error creating Stripe Checkout session:', e);
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // New: Endpoint to check the status of a checkout session and update the user
+  app.post('/api/check-session-status', authenticateToken, async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status === 'paid') {
+        const user = await User.findById(req.user.userId);
+
+        if (user && !user.isSubscribed) {
+          // The user is not yet marked as subscribed, let's update them now.
+          // This logic is similar to the webhook, ensuring fast updates.
+          let updateData = {};
+          if (session.mode === 'subscription') {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription);
+            updateData = {
+              isSubscribed: true,
+              subscriptionEndDate: new Date(subscription.current_period_end * 1000),
+              stripeCustomerId: session.customer,
+            };
+          } else if (session.mode === 'payment') {
+            const farFutureDate = new Date();
+            farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
+            updateData = {
+              isSubscribed: true,
+              subscriptionEndDate: farFutureDate,
+              stripeCustomerId: session.customer,
+            };
+          }
+          await User.findByIdAndUpdate(user._id, updateData);
+          console.log(`User ${user._id} subscription activated via session check.`);
+        }
+        
+        // Confirm that the subscription is now active
+        const updatedUser = await User.findById(req.user.userId);
+        res.json({ isSubscribed: updatedUser.isSubscribed });
+
+      } else {
+        // If not paid, just return the current (likely false) subscription status
+        res.json({ isSubscribed: false });
+      }
+    } catch (error) {
+      console.error('Error checking session status:', error);
+      res.status(500).json({ error: 'Failed to check session status' });
+    }
+  });
+
+  // New: Stripe Customer Portal Session Endpoint
+  app.post('/create-portal-session', authenticateToken, async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const user = await User.findById(userId);
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+      
+      if (!user.stripeCustomerId) {
+        console.error(`User ${userId} attempted to access portal without a Stripe Customer ID.`);
+        return res.status(400).json({ error: 'Stripe customer ID not found for this user.' });
+      }
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${req.protocol}://${req.get('host')}/`, // Redirect back to the main page
+      });
+
+      res.json({ url: portalSession.url });
+    } catch (e) {
+      console.error(`Error creating Stripe Customer Portal session for user ${req.user.userId}:`, e);
+      res.status(500).json({ error: 'Failed to create customer portal session.' });
     }
   });
 
@@ -457,16 +621,50 @@ connectDB().then((db) => {
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
+    // Log the incoming event
+    console.log('Stripe webhook event received:', event.type);
+
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const { userId } = session.metadata;
 
+      console.log(`Processing checkout.session.completed for user ID: ${userId}`);
+
       if (session.payment_status === 'paid') {
         try {
-          await User.findByIdAndUpdate(userId, { isSubscribed: true });
-          console.log(`User ${userId} subscription status updated to true.`);
+          let updateData = {};
+
+          if (session.mode === 'subscription') {
+            // It's a recurring subscription
+            const subscription = await stripe.subscriptions.retrieve(session.subscription);
+            updateData = {
+              isSubscribed: true,
+              subscriptionEndDate: new Date(subscription.current_period_end * 1000),
+              stripeCustomerId: session.customer,
+            };
+            console.log(`Successfully updated subscription for user ${userId}. End date: ${updateData.subscriptionEndDate}`);
+          } else if (session.mode === 'payment') {
+            // It's a one-time payment (Lifetime Access)
+            // Set an end date far in the future
+            const farFutureDate = new Date();
+            farFutureDate.setFullYear(farFutureDate.getFullYear() + 100); // 100 years from now
+            
+            updateData = {
+              isSubscribed: true,
+              subscriptionEndDate: farFutureDate,
+              stripeCustomerId: session.customer,
+            };
+            console.log(`Successfully updated one-time payment for user ${userId}. End date: ${updateData.subscriptionEndDate}`);
+          }
+          
+          // Update the user record in the database
+          if (Object.keys(updateData).length > 0) {
+            await User.findByIdAndUpdate(userId, updateData);
+            console.log(`Webhook: Successfully saved updateData for user ${userId}. Customer ID: ${updateData.stripeCustomerId}`);
+          }
+
         } catch (error) {
-          console.error(`Failed to update subscription status for user ${userId}:`, error);
+          console.error(`Webhook: Failed to update user ${userId} after payment:`, error);
         }
       }
     }

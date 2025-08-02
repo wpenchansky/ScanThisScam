@@ -54,7 +54,7 @@ header strong {
   transition: all 0.3s ease;
 }
 
-.cta-button:hover {
+header .cta-button:hover {
   background-color: transparent;
   color: white;
   border: 2px solid white;
@@ -390,7 +390,7 @@ footer {
 /* Results Section */
 .results-section {
   padding: 2rem;
-  background-color: #f9fafb;
+  background-color: #ffffff;
 }
 
 .results-container {
@@ -785,11 +785,52 @@ footer {
   text-decoration: underline;
 }
 
-/* --- My Scans Section Styles (similar to results-section) --- */
-.my-scans-section {
+/* --- My Scans Section Styles (Modal) --- */
+.my-scans-section,
+.results-section { /* Grouped for shared modal styles */
+  display: none; /* Hidden by default */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(21, 0, 62, 0.8); /* Darker overlay */
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+  overflow-y: auto; /* Allow scrolling if content is long */
   padding: 4rem 2rem;
-  background-color: #f9fafb;
 }
+
+/* New: Loading Modal Styles */
+.loading-modal {
+  display: none; /* Hidden by default */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(21, 0, 62, 0.8);
+  backdrop-filter: blur(5px);
+  z-index: 1001; /* Above other modals */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-container {
+  background-color: white;
+  padding: 2.5rem;
+  border-radius: 15px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.loading-container h2 {
+  font-size: 1.5rem;
+  color: #15003e;
+  margin-bottom: 1.5rem;
+}
+
 
 .my-scans-container {
   max-width: 1200px;
@@ -833,9 +874,66 @@ footer {
   text-align: center;
 }
 
-/* Ensure all-results-container styles apply within my-scans-section */
-.my-scans-section .all-results-container .analysis-card {
-  margin-bottom: 1.5rem; /* Space between cards */
+/* New, correct fix for spacing */
+.my-scans-section .all-results-container {
+  gap: 0.5rem; /* This controls the space between scan cards */
+}
+
+/* New: Filter Panel Styles */
+.filter-panel {
+  padding: 1.5rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px solid #e5e7eb;
+}
+
+.filter-group {
+  margin-bottom: 1.5rem;
+}
+
+.filter-group h4 {
+  margin: 0 0 0.8rem 0;
+  color: #374151;
+  font-size: 1rem;
+}
+
+.filter-group label {
+  margin-right: 1.5rem;
+  color: #4b5563;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.filter-actions button {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#applyFiltersBtn {
+  background-color: #3e92b5;
+  color: white;
+}
+
+#applyFiltersBtn:hover {
+  background-color: #2d7a9a;
+}
+
+#resetFiltersBtn {
+  background-color: #e5e7eb;
+  color: #4b5563;
+}
+
+#resetFiltersBtn:hover {
+  background-color: #d1d5db;
 }
 
 /* Header adjustments for user info */
@@ -863,7 +961,7 @@ footer {
   background-color: #ffffff;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem; /* Further reduced space between cards */
   overflow: hidden;
 }
 
@@ -882,6 +980,27 @@ footer {
   font-size: 1.1rem;
   color: #2d3748;
 }
+
+/* New: Styles for the right side of the collapsible header */
+.header-right-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.risk-score-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+  min-width: 20px;
+  text-align: center;
+}
+
+.risk-score-badge.low-risk { background-color: #10b981; }
+.risk-score-badge.medium-risk { background-color: #f59e0b; }
+.risk-score-badge.high-risk { background-color: #ef4444; }
 
 .collapsible-header p {
   margin: 0;

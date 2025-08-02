@@ -21,6 +21,7 @@
     <div class="button-group">
       <button type="button" class="cta-button" id="loginBtn">Login</button>
       <button type="button" class="cta-button" id="myScansBtn" style="display: none;">My Scans</button>
+      <button type="button" class="cta-button" id="manageSubscriptionBtn" style="display: none;">Manage Subscription</button>
       <button type="button" class="cta-button" id="logoutBtn" style="display: none;">Logout</button>
     </div>
   </header>
@@ -50,6 +51,34 @@
     <div class="my-scans-container">
       <button type="button" class="my-scans-close-btn" id="scansCloseBtn">&times;</button>
       <h2>My Past Scans</h2>
+      <button type="button" class="cta-button" id="filterScansBtn" style="margin-bottom: 1rem;">Filter Scans</button>
+      
+      <!-- New: Filter Panel -->
+      <div class="filter-panel" id="filterPanel" style="display: none;">
+        <div class="filter-group">
+          <h4>Content Type</h4>
+          <label><input type="checkbox" name="contentType" value="text"> Text</label>
+          <label><input type="checkbox" name="contentType" value="image"> Image</label>
+          <label><input type="checkbox" name="contentType" value="pdf"> PDF</label>
+          <label><input type="checkbox" name="contentType" value="audio"> Audio</label>
+        </div>
+        <div class="filter-group">
+          <h4>Risk Level</h4>
+          <label><input type="checkbox" name="riskLevel" value="low"> Low (0-25)</label>
+          <label><input type="checkbox" name="riskLevel" value="medium"> Medium (26-75)</label>
+          <label><input type="checkbox" name="riskLevel" value="high"> High (76-100)</label>
+        </div>
+        <div class="filter-group">
+          <h4>Date Range</h4>
+          <label>Start Date: <input type="date" id="startDate"></label>
+          <label>End Date: <input type="date" id="endDate"></label>
+        </div>
+        <div class="filter-actions">
+            <button id="applyFiltersBtn">Apply Filters</button>
+            <button id="resetFiltersBtn">Reset</button>
+        </div>
+      </div>
+
       <div id="pastScansList" class="all-results-container">
         <!-- Past analysis results will be loaded here -->
       </div>
@@ -166,11 +195,23 @@
   </section>
 
   <section class="results-section" id="resultsSection" style="display: none;">
-    <h2>Analysis Results</h2>
-    <div id="allResultsContainer" class="all-results-container">
-      <!-- Individual analysis results will be appended here -->
+    <div class="my-scans-container"> <!-- Re-using this class for consistent modal styling -->
+      <button type="button" class="my-scans-close-btn" id="resultsCloseBtn">&times;</button>
+      <h2>Analysis Results</h2>
+      <div id="allResultsContainer" class="all-results-container">
+        <!-- Individual analysis results will be appended here -->
+      </div>
     </div>
   </section>
+
+  <!-- New: Loading Modal -->
+  <div class="loading-modal" id="loadingModal" style="display: none;">
+      <div class="loading-container">
+          <h2>Analyzing Your Content...</h2>
+          <p>This may take a moment. Please wait.</p>
+          <div class="spinner"></div>
+      </div>
+  </div>
 
   <footer>
     Scam Checking Service provided by Placeholder Inc.
@@ -191,6 +232,7 @@
       isAuthenticated: false,
       isSubscribed: false
     };
+
     // New: Helper function to make authenticated API requests
     function fetchProtected(url, options = {}) {
       if (!currentUser.token) {
@@ -207,6 +249,7 @@
       
       return fetch(url, authOptions);
     }
+
     // New: Function to load user from localStorage on page load
     function loadUserFromStorage() {
       const storedUser = localStorage.getItem('currentUser');
@@ -220,10 +263,12 @@
         }
       }
     }
+
     // New: Function to save user to localStorage
     function saveUserToStorage() {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
     }
+
     // New: Function to update UI based on authentication status
     function updateUIForAuth() {
       const authSection = document.getElementById('authSection');
@@ -235,6 +280,8 @@
       const myScansBtn = document.getElementById('myScansBtn');
       const logoutBtn = document.getElementById('logoutBtn');
       
+      const manageSubscriptionBtn = document.getElementById('manageSubscriptionBtn');
+
       if (currentUser.isAuthenticated) {
         // User is logged in - show main app, hide auth
         authSection.style.display = 'none';
@@ -247,6 +294,9 @@
         myScansBtn.style.display = 'inline-block';
         logoutBtn.style.display = 'inline-block';
         
+        // Show/hide subscription management button in the main header
+        manageSubscriptionBtn.style.display = currentUser.isSubscribed ? 'inline-block' : 'none';
+
         console.log('User logged in:', currentUser.email);
       } else {
         // User is not logged in - show auth, hide main app
@@ -262,6 +312,7 @@
         logoutBtn.style.display = 'none';
       }
     }
+
     // New: Function to handle logout
     function logout() {
       currentUser = {
@@ -274,52 +325,37 @@
       localStorage.removeItem('currentUser');
       updateUIForAuth();
     }
-    // New: Function to load user's past scans
-    async function loadPastScans() {
+
+    // New: Function to load user's past scans with filters
+    async function loadPastScans(filters = {}) {
       try {
-        const response = await fetchProtected('/api/user-scans');
+        const query = new URLSearchParams(filters).toString();
+        const response = await fetchProtected(`/api/user-scans?${query}`);
         if (response.ok) {
           const scans = await response.json();
           const pastScansList = document.getElementById('pastScansList');
           pastScansList.innerHTML = '';
           
           if (scans.length === 0) {
-            pastScansList.innerHTML = '<p>No past scans found.</p>';
+            pastScansList.innerHTML = '<p>No past scans found matching your criteria.</p>';
             return;
           }
           
           scans.forEach(scan => {
             const scanCard = document.createElement('div');
             scanCard.className = 'analysis-card-collapsible';
-            let scanDetails = 'File'; // Default
-            if (scan.original_input) {
-                scanDetails = 'text';
-            } else if (scan.file_path) {
-                const extension = scan.file_path.split('.').pop().toLowerCase();
-                switch (extension) {
-                    case 'pdf':
-                        scanDetails = 'PDF';
-                        break;
-                    case 'txt':
-                        scanDetails = 'Text File';
-                        break;
-                    case 'png':
-                    case 'jpg':
-                    case 'jpeg':
-                        scanDetails = 'Image';
-                        break;
-                    case 'mp3':
-                    case 'wav':
-                    case 'm4a':
-                        scanDetails = 'Audio';
-                        break;
-                }
-            }
+
+            // Use the submissionType field from the database
+            let scanDetails = scan.submissionType || 'file'; // Fallback to 'file'
+
             scanCard.innerHTML = `
               <div class="collapsible-header">
                 <h3>Scan from ${new Date(scan.createdAt).toLocaleDateString()}</h3>
-                <p>${scanDetails}</p>
-                <button class="expand-btn"><i class="fas fa-chevron-down"></i></button>
+                <p>${scanDetails.charAt(0).toUpperCase() + scanDetails.slice(1)}</p>
+                <div class="header-right-group">
+                  <div class="risk-score-badge"></div>
+                  <button class="expand-btn"><i class="fas fa-chevron-down"></i></button>
+                </div>
               </div>
               <div class="collapsible-content">
                 <div class="risk-score">
@@ -350,15 +386,25 @@
             `;
             
             // Populate the scan data
+            const score = scan.result.riskScore || 0;
+            
+            // New: Populate and color-code the header badge
+            const riskBadge = scanCard.querySelector('.risk-score-badge');
+            riskBadge.textContent = score;
+            if (score >= 76) { riskBadge.classList.add('high-risk'); }
+            else if (score >= 26) { riskBadge.classList.add('medium-risk'); }
+            else { riskBadge.classList.add('low-risk'); }
+
+            // Populate the large score circle inside the collapsible
             const scoreCircle = scanCard.querySelector('.score-circle');
             const riskScoreSpan = scoreCircle.querySelector('span');
             if (riskScoreSpan) {
-              riskScoreSpan.textContent = scan.result.riskScore || 0;
-              const score = scan.result.riskScore || 0;
-              if (score >= 70) { scoreCircle.style.backgroundColor = '#ef4444'; }
-              else if (score >= 40) { scoreCircle.style.backgroundColor = '#f59e0b'; }
+              riskScoreSpan.textContent = score;
+              if (score >= 76) { scoreCircle.style.backgroundColor = '#ef4444'; }
+              else if (score >= 26) { scoreCircle.style.backgroundColor = '#f59e0b'; }
               else { scoreCircle.style.backgroundColor = '#10b981'; }
             }
+
             updateList(scanCard.querySelector('.redFlags'), scan.result.redFlags || []);
             updateList(scanCard.querySelector('.threats'), scan.result.threats || []);
             updateList(scanCard.querySelector('.recommendations'), scan.result.recommendations || []);
@@ -366,6 +412,7 @@
             
             pastScansList.appendChild(scanCard);
           });
+
           // Add event listeners for collapsibles
           document.querySelectorAll('.collapsible-header').forEach(header => {
             header.addEventListener('click', () => {
@@ -382,6 +429,7 @@
         console.error('Error loading past scans:', error);
       }
     }
+
     // Main input elements
     const mainInput = document.getElementById('mainInput');
     const inputContainer = document.getElementById('inputContainer');
@@ -389,11 +437,13 @@
     const fileInput = document.getElementById('fileInput');
     const analyzeBtn = document.getElementById('analyzeBtn');
     const addToQueueBtn = document.getElementById('addToQueueBtn'); // New: Add to Queue button
+
     // Queue elements
     const queueSection = document.getElementById('queueSection'); // New
     const queueCountSpan = document.getElementById('queueCount'); // New
     const queuedItemsList = document.getElementById('queuedItemsList'); // New
     const clearQueueBtn = document.getElementById('clearQueueBtn'); // New
+
     // New: Auth form elements
     const loginForm = document.getElementById('loginForm');
     const signupForm = document.getElementById('signupForm');
@@ -401,17 +451,20 @@
     const signupBtn = document.getElementById('signupBtn');
     const showSignupLink = document.getElementById('showSignup');
     const showLoginLink = document.getElementById('showLogin');
+
     // New: Auth event listeners
     showSignupLink.addEventListener('click', (e) => {
       e.preventDefault();
       loginForm.style.display = 'none';
       signupForm.style.display = 'block';
     });
+
     showLoginLink.addEventListener('click', (e) => {
       e.preventDefault();
       signupForm.style.display = 'none';
       loginForm.style.display = 'block';
     });
+
     // New: Header button event listeners
     document.getElementById('loginBtn').addEventListener('click', (e) => {
       e.preventDefault();
@@ -419,40 +472,102 @@
       document.getElementById('authSection').style.display = 'block';
       document.getElementById('authSection').scrollIntoView({ behavior: 'smooth' });
     });
+
     document.getElementById('myScansBtn').addEventListener('click', (e) => {
       e.preventDefault();
       document.getElementById('myScansSection').style.display = 'block';
-      document.getElementById('myScansSection').scrollIntoView({ behavior: 'smooth' });
       loadPastScans(); // Load user's past scans
     });
+
     document.getElementById('logoutBtn').addEventListener('click', (e) => {
       e.preventDefault();
       logout();
     });
+
     // Close auth window
     document.getElementById('authCloseBtn').addEventListener('click', (e) => {
       e.preventDefault();
       document.getElementById('authSection').style.display = 'none';
     });
+
+    document.getElementById('manageSubscriptionBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const response = await fetchProtected('/create-portal-session', {
+          method: 'POST'
+        });
+        if (response.ok) {
+          const { url } = await response.json();
+          window.location.href = url;
+        } else {
+          const errorData = await response.json();
+          alert('Could not open subscription management: ' + (errorData.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error creating customer portal session:', error);
+        alert('Error creating customer portal session. Please try again later.');
+      }
+    });
+
+    // New: Filter functionality
+    document.getElementById('filterScansBtn').addEventListener('click', () => {
+        const filterPanel = document.getElementById('filterPanel');
+        filterPanel.style.display = filterPanel.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.getElementById('applyFiltersBtn').addEventListener('click', () => {
+        const contentTypes = Array.from(document.querySelectorAll('input[name="contentType"]:checked')).map(el => el.value);
+        const riskLevels = Array.from(document.querySelectorAll('input[name="riskLevel"]:checked')).map(el => el.value);
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        const filters = {};
+        if (contentTypes.length) filters.contentTypes = contentTypes.join(',');
+        if (riskLevels.length) filters.riskLevels = riskLevels.join(',');
+        if (startDate) filters.startDate = startDate;
+        if (endDate) filters.endDate = endDate;
+
+        console.log('Applying filters:', filters); // New: Debugging log
+        loadPastScans(filters);
+    });
+
+    document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+        document.querySelectorAll('input[name="contentType"]').forEach(el => el.checked = false);
+        document.querySelectorAll('input[name="riskLevel"]').forEach(el => el.checked = false);
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        loadPastScans();
+    });
+
     // Close scans window
     document.getElementById('scansCloseBtn').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById('myScansSection').style.display = 'none';
     });
+
+    // New: Close results window
+    document.getElementById('resultsCloseBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('resultsSection').style.display = 'none';
+    });
+
     signupBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       const email = document.getElementById('signupEmail').value;
       const password = document.getElementById('signupPassword').value;
+
       if (!email || !password) {
         alert('Please fill in all fields');
         return;
       }
+
       try {
         const response = await fetch('/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
+
         if (response.ok) {
           const data = await response.json();
           currentUser = {
@@ -465,14 +580,18 @@
           saveUserToStorage();
           updateUIForAuth();
           
-          // Close the auth window and redirect to the dashboard
+          // Restore the queue after successful signup
+          restoreQueueFromStorage();
+
+          // Close the auth window and continue the flow
           document.getElementById('authSection').style.display = 'none';
-          document.getElementById('myScansSection').style.display = 'block';
-          document.getElementById('myScansSection').scrollIntoView({ behavior: 'smooth' });
-          loadPastScans();
+          
           // Clear signup form
           document.getElementById('signupEmail').value = '';
           document.getElementById('signupPassword').value = '';
+          
+          // Re-trigger analysis flow
+          analyzeContent();
         } else {
           const errorText = await response.text();
           alert('Signup failed: ' + errorText);
@@ -482,20 +601,24 @@
         alert('Signup failed: Network error');
       }
     });
+
     authLoginBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       const email = document.getElementById('loginEmail').value;
       const password = document.getElementById('loginPassword').value;
+
       if (!email || !password) {
         alert('Please fill in all fields');
         return;
       }
+
       try {
         const response = await fetch('/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
+
         if (response.ok) {
           const data = await response.json();
           currentUser = {
@@ -506,10 +629,24 @@
             isSubscribed: data.isSubscribed || false
           };
           saveUserToStorage();
+
+          // Immediately check subscription status upon login
+          await pollSubscriptionStatus(); 
+          
           updateUIForAuth();
+
+          // Restore the queue after successful login
+          restoreQueueFromStorage();
+
+          // Close the auth window
+          document.getElementById('authSection').style.display = 'none';
+
           // Clear login form
           document.getElementById('loginEmail').value = '';
           document.getElementById('loginPassword').value = '';
+
+          // Re-trigger analysis flow
+          analyzeContent();
         } else {
           const errorText = await response.text();
           alert('Login failed: ' + errorText);
@@ -519,17 +656,20 @@
         alert('Login failed: Network error');
       }
     });
+
     // Drag and drop over text field
     inputContainer.addEventListener('dragover', (e) => {
       e.preventDefault();
       inputOverlay.style.display = 'flex';
     });
+
     inputContainer.addEventListener('dragleave', (e) => {
       e.preventDefault();
       if (!inputContainer.contains(e.relatedTarget)) {
         inputOverlay.style.display = 'none';
       }
     });
+
     inputContainer.addEventListener('drop', (e) => {
       e.preventDefault();
       inputOverlay.style.display = 'none';
@@ -538,12 +678,14 @@
         handleFile(files[0]);
       }
     });
+
     // Paste event handling
     mainInput.addEventListener('paste', (e) => {
       e.preventDefault();
       
       const items = e.clipboardData.items;
       let hasContent = false;
+
       for (let item of items) {
         if (item.type.indexOf('image') !== -1) {
           // Handle pasted image
@@ -560,6 +702,7 @@
           hasContent = true;
         }
       }
+
       if (!hasContent) {
         // Fallback: try to get text from clipboard
         navigator.clipboard.readText().then(text => {
@@ -574,22 +717,26 @@
         });
       }
     });
+
     // File input change
     fileInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
         handleFile(e.target.files[0]);
       }
     });
+
     // Text input change
     mainInput.addEventListener('input', (e) => {
       currentText = e.target.value;
       updateButtons(); // Changed from updateAnalyzeButton
     });
+
     function handleFile(file) {
       currentFile = file;
       showFilePreview(file.name);
       updateButtons(); // Changed from updateAnalyzeButton
     }
+
     function showFilePreview(fileName) {
       // Create or update file preview
       let filePreview = document.getElementById('filePreview');
@@ -609,6 +756,7 @@
       document.getElementById('fileName').textContent = fileName;
       filePreview.style.display = 'block';
     }
+
     function removeFile() {
       currentFile = null;
       currentPastedImage = null;
@@ -618,12 +766,14 @@
       }
       updateButtons(); // Changed from updateAnalyzeButton
     }
+
     // New: Function to update both analyze and add to queue buttons
     function updateButtons() {
       const hasContent = (currentFile !== null) || (currentText.trim() !== '');
       analyzeBtn.disabled = queuedItems.length === 0; // Analyze button enabled only if queue has items
       addToQueueBtn.disabled = !hasContent; // Add to Queue button enabled if current input has content
     }
+
     // New: Add current input to queue
     function addToQueue() {
       if (currentFile) {
@@ -645,12 +795,14 @@
       updateQueueList();
       updateButtons();
     }
+
     // New: Clear the main input area
     function clearInput() {
       mainInput.value = '';
       currentText = '';
       removeFile(); // This also sets currentFile/currentPastedImage to null
     }
+
     // New: Update the displayed list of queued items
     function updateQueueList() {
       queuedItemsList.innerHTML = '';
@@ -676,18 +828,21 @@
       }
       queueCountSpan.textContent = queuedItems.length;
     }
+
     // New: Remove a specific item from the queue
     function removeQueuedItem(id) {
       queuedItems = queuedItems.filter(item => item.id !== id);
       updateQueueList();
       updateButtons();
     }
+
     // New: Clear all items from the queue
     function clearQueue() {
       queuedItems = [];
       updateQueueList();
       updateButtons();
     }
+
     // Modified analyzeContent to get analysisId and pass to displaySingleResult
     async function analyzeContent() {
       if (queuedItems.length === 0) {
@@ -696,14 +851,18 @@
       }
 
       if (!currentUser.isAuthenticated) {
+        // Save the queue before showing the auth form
+        sessionStorage.setItem('analysisQueue', JSON.stringify(queuedItems));
         document.getElementById('authSection').style.display = 'block';
         document.getElementById('authSection').scrollIntoView({ behavior: 'smooth' });
         return;
       }
 
+      // If user is subscribed, bypass paywall
       if (currentUser.isSubscribed) {
         document.getElementById('resultsSection').style.display = 'block';
         document.getElementById('pricingSection').style.display = 'none';
+        // Proceed with analysis and display results directly
         await processAndDisplaySubscribedUserResults();
         return;
       }
@@ -714,15 +873,11 @@
     }
 
     async function processAndDisplaySubscribedUserResults() {
-        analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
-        analyzeBtn.disabled = true;
-        addToQueueBtn.disabled = true;
-        clearQueueBtn.disabled = true;
+        const loadingModal = document.getElementById('loadingModal');
+        loadingModal.style.display = 'flex'; // Show loading modal
 
         const allResultsContainer = document.getElementById('allResultsContainer');
         allResultsContainer.innerHTML = '';
-        document.getElementById('resultsSection').style.display = 'block';
-        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
 
         for (const item of queuedItems) {
             const formData = new FormData();
@@ -752,11 +907,14 @@
             }
         }
 
+        loadingModal.style.display = 'none'; // Hide loading modal
+        document.getElementById('resultsSection').style.display = 'block'; // Show results modal
+
         clearQueue();
         resetButtons();
     }
 
-        function createResultCard(item) {
+    function createResultCard(item) {
         const resultCard = document.createElement('div');
         resultCard.className = 'results-container analysis-card';
         resultCard.id = `result-card-${item.id}`;
@@ -789,8 +947,10 @@
         `;
         return resultCard;
     }
+
     async function displaySubscribedResult(resultCard, analysisId) {
         if (!resultCard) return;
+
         try {
             const response = await fetchProtected(`/api/results/${analysisId}`);
             if (response.ok) {
@@ -805,32 +965,39 @@
             displayErrorOnCard(resultCard, 'Network error while fetching results.');
         }
     }
+
     function resetButtons() {
         analyzeBtn.innerHTML = '<i class="fas fa-shield-alt"></i> Analyze for Scams';
         analyzeBtn.disabled = queuedItems.length === 0;
         addToQueueBtn.disabled = false;
         clearQueueBtn.disabled = queuedItems.length === 0;
     }
+
     function displayErrorOnCard(card, errorDetails) {
         const scoreCircle = card.querySelector('.score-circle');
         scoreCircle.classList.remove('loading-spinner');
         scoreCircle.style.backgroundColor = '#ef4444'; // Red for error
         scoreCircle.innerHTML = `<span>!</span>`;
+
         const analysisContent = card.querySelector('.analysis-content');
         analysisContent.classList.remove('results-blurred');
         
         const redFlagsList = card.querySelector('.redFlags');
         updateList(redFlagsList, [`Error: ${errorDetails}`]);
+
         // Clear other lists
         updateList(card.querySelector('.threats'), []);
         updateList(card.querySelector('.recommendations'), []);
         updateList(card.querySelector('.safetyTips'), []);
     }
+
     function populateResultCard(card, resultData) {
         const analysisContent = card.querySelector('.analysis-content');
         analysisContent.classList.remove('results-blurred');
+
         const checkoutBtn = card.querySelector('.checkout-for-results-btn');
         if (checkoutBtn) checkoutBtn.style.display = 'none';
+
         const scoreCircle = card.querySelector('.score-circle');
         scoreCircle.classList.remove('loading-spinner');
         scoreCircle.innerHTML = `<span>${resultData.riskScore || 0}</span>`;
@@ -838,13 +1005,18 @@
         if (score >= 70) { scoreCircle.style.backgroundColor = '#ef4444'; }
         else if (score >= 40) { scoreCircle.style.backgroundColor = '#f59e0b'; }
         else { scoreCircle.style.backgroundColor = '#10b981'; }
+
         updateList(card.querySelector('.redFlags'), resultData.redFlags || []);
         updateList(card.querySelector('.threats'), resultData.threats || []);
         updateList(card.querySelector('.recommendations'), resultData.recommendations || []);
         updateList(card.querySelector('.safetyTips'), resultData.safetyTips || []);
     }
+
     // New: Function to initiate Stripe Checkout
     async function initiateCheckout(priceId) {
+      // Save the queue to sessionStorage before redirecting
+      sessionStorage.setItem('analysisQueue', JSON.stringify(queuedItems));
+
       try {
         const response = await fetchProtected('/create-checkout-session', {
           method: 'POST',
@@ -865,8 +1037,11 @@
       } catch (error) {
         console.error('Error initiating payment:', error);
         alert('Error initiating payment: ' + error.message);
+        // Clear the stored queue if checkout fails
+        sessionStorage.removeItem('analysisQueue');
       }
     }
+
     // Modified: updateList to accept an element directly
     function updateList(element, items) {
       element.innerHTML = '';
@@ -882,92 +1057,7 @@
         element.appendChild(li);
       });
     }
-    // New: Function to check URL for payment status and load results
-    async function checkPaymentStatusAndLoadResults() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const analysisId = urlParams.get('analysis_id');
-      const sessionId = urlParams.get('session_id'); // Optional, for Stripe confirmation if needed
-      if (analysisId) {
-        // If we landed here from success.html or if `paid=true` in URL, mark payment as complete on backend
-        if (urlParams.get('paid') === 'true') {
-            try {
-                // Use fetchProtected for authenticated request
-                const response = await fetchProtected('/api/mark-paid', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ analysisId: analysisId })
-                });
-                const result = await response.json();
-                if (result.status !== 'success') {
-                    console.error('Failed to mark payment as paid:', result.error);
-                }
-                // Fall through to display results
-            } catch (error) {
-                console.error('Error marking payment paid:', error);
-                alert('Could not confirm payment. Please contact support.');
-                return; // Stop here if marking paid fails
-            }
-        }
-        // If `paid=true` in URL or we just marked it paid, try to fetch results
-        if (urlParams.get('paid') === 'true') {
-            try {
-                // Use fetchProtected for authenticated request
-                const response = await fetchProtected(`/api/results/${analysisId}`);
-                if (response.ok) {
-                    const paidResult = await response.json();
-                    // Find the card and display the result
-                    let resultCard = document.querySelector(`[data-analysis-id="${analysisId}"]`);
-                    if (resultCard) {
-                        populateResultCard(resultCard, paidResult);
-                    } else {
-                        // If results card doesn't exist yet (e.g., direct link after payment)
-                        // Create a new result card to display the paid results
-                        const allResultsContainer = document.getElementById('allResultsContainer');
-                        const newResultCard = document.createElement('div');
-                        newResultCard.className = 'results-container analysis-card';
-                        newResultCard.id = `result-card-${analysisId}`; // Use analysisId as unique ID
-                        newResultCard.dataset.analysisId = analysisId; // Set data attribute
-                        newResultCard.innerHTML = `
-                            <h3>Analysis Result for ID: ${analysisId}</h3>
-                            <div class="risk-score">
-                                <div class="score-circle">
-                                    <span>${paidResult.riskScore || 0}</span>
-                                </div>
-                                <h3>Risk Score</h3>
-                            </div>
-                            <div class="analysis-content">
-                                <div class="analysis-section">
-                                    <h3><i class="fas fa-exclamation-triangle"></i> Red Flags</h3>
-                                    <ul class="redFlags"></ul>
-                                 </div>
-                                <div class="analysis-section">
-                                    <h3><i class="fas fa-bug"></i> Potential Threats</h3>
-                                    <ul class="threats"></ul>
-                                 </div>
-                                <div class="analysis-section">
-                                    <h3><i class="fas fa-lightbulb"></i> Recommendations</h3>
-                                    <ul class="recommendations"></ul>
-                                 </div>
-                                <div class="analysis-section">
-                                    <h3><i class="fas fa-shield-alt"></i> Safety Tips</h3>
-                                    <ul class="safetyTips"></ul>
-                                 </div>
-                             </div>
-                        `;
-                        allResultsContainer.appendChild(newResultCard);
-                        populateResultCard(newResultCard, paidResult);
-                    }
-                } else {
-                    const errorData = await response.json();
-                    alert('Failed to load paid results: ' + (errorData.error || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Error fetching paid results:', error);
-                alert('Error loading results: Could not connect to server.');
-            }
-        }
-      }
-    }
+
     // New: Function to poll subscription status
     async function pollSubscriptionStatus() {
       if (!currentUser.isAuthenticated) {
@@ -990,6 +1080,33 @@
         console.error('Error polling subscription status:', error);
       }
     }
+
+    // New: Function to restore queue from sessionStorage
+    function restoreQueueFromStorage() {
+      const savedQueue = sessionStorage.getItem('analysisQueue');
+      if (savedQueue) {
+        try {
+          // Note: This restores the data, but not the File objects themselves.
+          // This implementation will need to be adjusted if you need to re-upload files.
+          // For now, we'll restore text-based items.
+          const parsedQueue = JSON.parse(savedQueue);
+          queuedItems = parsedQueue.filter(item => item.type === 'text');
+          
+          if (queuedItems.length > 0) {
+            updateQueueList();
+            updateButtons();
+            console.log('Restored text-based items from previous session.');
+          }
+
+        } catch (error) {
+          console.error('Error restoring queue from sessionStorage:', error);
+        } finally {
+          // Clear the storage after attempting to restore
+          sessionStorage.removeItem('analysisQueue');
+        }
+      }
+    }
+
     // Initial setup
     updateButtons();
     
@@ -1003,13 +1120,13 @@
     
     // New: Load user from storage and update UI on page load
     loadUserFromStorage();
+    restoreQueueFromStorage();
     
     // New: Check for payment status only if user is authenticated
     if (currentUser.isAuthenticated) {
-      checkPaymentStatusAndLoadResults();
       // Start polling for subscription status
-      setInterval(pollSubscriptionStatus, 30000); // Poll every 30 seconds
+      setInterval(pollSubscriptionStatus, 5000); // Poll every 5 seconds
     }
   </script>
 </body>
-</html>
+</html> 
